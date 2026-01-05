@@ -426,7 +426,7 @@ Interested in:
 - Behavioral analysis approaches
 - User study on security control bypass training
 
-Contact: [TBD]
+Contact: albert@securityronin.com
 
 ---
 
