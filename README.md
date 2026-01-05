@@ -85,18 +85,14 @@ flowchart TD
         D["macOS sandbox-exec dry-run<br/>Captures file/network/process<br/>Only for medium threats"]
     end
 
-    D --> E
-
-    subgraph Stage4["Stage 4: Cloud AI - Enterprise (~500ms)"]
-        E["Encrypted payload transmission<br/>Behavioral analysis + explanation"]
-    end
-
-    E --> F{{"🎯 Threat Level"}}
+    D --> F{{"🎯 Threat Level"}}
 
     F -->|"1-6"| G["🟡 Low<br/>Warn + Prompt"]
     F -->|"7-8"| H["🟠 Medium<br/>Sandbox + Approve"]
     F -->|"9-10"| I["🔴 High<br/>Block"]
 ```
+
+> **Note:** [PipeGuard Pro](https://github.com/SecurityRonin/pipeguard-pro) adds Stage 4: Cloud AI Analysis with encrypted payload transmission for enterprise deployments.
 
 ### YARA Rule Categories
 
@@ -122,24 +118,6 @@ flowchart TD
 | **Preexec Logging** | Audit trail | All commands | N/A (detection only) |
 
 **Defense in depth:** Bypassing one layer still triggers another.
-
-### Network Security
-
-All cloud transmissions use **age encryption** to prevent enterprise TLS inspection from flagging malware content:
-
-```mermaid
-sequenceDiagram
-    participant C as 🖥️ Client
-    participant P as 🔍 TLS Proxy
-    participant S as ☁️ Server
-
-    C->>P: POST encrypted_blob
-    Note over P: Sees: random bytes<br/>No signatures to match
-    P->>S: Forward encrypted_blob
-    Note over S: Decrypts with age<br/>Analyzes content
-    S-->>P: Encrypted response
-    P-->>C: Forward response
-```
 
 ---
 
@@ -168,41 +146,6 @@ sequenceDiagram
 
 ---
 
-## Enterprise Considerations
-
-### Fleet Policy Enforcement
-
-```mermaid
-flowchart TD
-    A["🏢 MDM<br/>(Jamf / Kandji / Mosyle / Intune)"] --> B
-
-    subgraph Profile["Configuration Profile"]
-        B["📁 /Library/Managed Preferences/<br/>com.pipeguard.plist"]
-        C["high_action = block<br/>allow_force_override = false<br/>ai_analysis_required = true"]
-        D["🔒 LOCKED - user cannot change"]
-    end
-
-    B --> C
-    C --> D
-```
-
-### Open Source vs Enterprise
-
-| Feature | Open Source | Enterprise |
-|---------|-------------|------------|
-| YARA detection | ✅ | ✅ |
-| Apple XProtect rules | ✅ | ✅ |
-| ClamAV integration | ✅ | ✅ |
-| Sandbox analysis | ✅ | ✅ |
-| Local audit logs | ✅ | ✅ |
-| Central rule distribution | ❌ | ✅ |
-| Cloud AI analysis | ❌ | ✅ |
-| Fleet policy management | ❌ | ✅ |
-| Audit log aggregation | ❌ | ✅ |
-| Threat intel feeds | ❌ | ✅ |
-
----
-
 ## Implementation
 
 ### Technology Stack
@@ -220,7 +163,7 @@ pipeguard/
 │   ├── detection/     # YARA, ClamAV, sandbox
 │   ├── interception/  # Shell integration
 │   ├── config/        # Settings, allowlist
-│   └── enterprise/    # AI, sync, policy
+│   └── logging/       # Audit trail
 ├── rules/
 │   └── core.yar       # Default YARA rules
 └── shell/
@@ -232,10 +175,9 @@ pipeguard/
 
 ```bash
 cargo build --release
-
-# With enterprise features
-cargo build --release --features enterprise
 ```
+
+> **Enterprise:** See [PipeGuard Pro](https://github.com/SecurityRonin/pipeguard-pro) for cloud AI analysis, fleet policy, MDM integration, and central rule distribution.
 
 ---
 
@@ -268,11 +210,12 @@ No existing tool specifically addresses the `curl | bash` attack vector with pre
 | **Pre-execution interception** | Scans script content *before* any code runs—not after damage is done |
 | **Shell-native integration** | ZLE binding intercepts at keystroke level; no kernel extension required |
 | **curl\|bash specific** | Purpose-built for the exact attack vector, not general-purpose EDR |
-| **Multi-stage detection** | YARA → XProtect → ClamAV → Sandbox → AI (layered, not single-point) |
+| **Multi-stage detection** | YARA → XProtect → ClamAV → Sandbox (layered, not single-point) |
 | **Gatekeeper gap coverage** | Addresses Apple's intentional design decision to not quarantine piped content |
 | **ClickFix/AMOS focused** | YARA rules tuned for 2024-2025 campaign IOCs |
-| **Enterprise-ready** | MDM integration, fleet policy, encrypted cloud analysis |
-| **Transparent** | Open source core—security tools should be auditable |
+| **Transparent** | Open source (MIT)—security tools should be auditable |
+
+> **Enterprise needs?** [PipeGuard Pro](https://github.com/SecurityRonin/pipeguard-pro) adds Cloud AI analysis, MDM integration, fleet policy, and central rule distribution.
 
 ### Detailed Tool Comparison
 
@@ -290,6 +233,23 @@ Powerful system introspection via SQL. Includes [osx-attacks.conf](https://githu
 
 #### Enterprise EDR (CrowdStrike, Jamf Protect, Kandji)
 Full-featured endpoint security with behavioral analysis. **Limitation:** Designed for general threat detection, not specifically optimized for pipe-to-shell patterns. Detection typically post-execution.
+
+---
+
+## PipeGuard Pro
+
+For enterprise deployments, [**PipeGuard Pro**](https://github.com/SecurityRonin/pipeguard-pro) adds:
+
+| Feature | Description |
+|---------|-------------|
+| **Cloud AI Analysis** | Stage 4 detection with LLM-powered behavioral analysis |
+| **Encrypted Transmission** | age encryption bypasses TLS inspection (Zscaler, Netskope) |
+| **Fleet Policy** | MDM-enforced configuration (Jamf, Kandji, Mosyle, Intune) |
+| **Central Rule Sync** | Automatic YARA rule updates across your fleet |
+| **Audit Aggregation** | Centralized security event collection and analysis |
+| **Threat Intel Feeds** | Integration with commercial threat intelligence |
+
+Contact: enterprise@pipeguard.dev
 
 ---
 
@@ -369,7 +329,7 @@ Contact: [TBD]
 
 MIT License - Copyright (c) 2026 Security Ronin
 
-Enterprise features are available in [pipeguard-pro](https://github.com/security-ronin/pipeguard-pro) (proprietary license).
+Enterprise features are available in [PipeGuard Pro](https://github.com/SecurityRonin/pipeguard-pro) (proprietary license).
 
 ---
 
