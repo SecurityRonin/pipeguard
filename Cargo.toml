@@ -1,0 +1,59 @@
+[package]
+name = "pipeguard"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Defend against curl|bash attacks with multi-layer interception and threat detection"
+repository = "https://github.com/security-ronin/pipeguard"
+homepage = "https://pipeguard.dev"
+keywords = ["security", "malware", "curl", "bash", "yara"]
+categories = ["command-line-utilities", "development-tools"]
+readme = "README.md"
+
+[lib]
+name = "pipeguard"
+path = "src/lib.rs"
+
+[[bin]]
+name = "pipeguard"
+path = "src/main.rs"
+
+[features]
+default = []
+
+[dependencies]
+# CLI
+clap = { version = "4", features = ["derive"] }
+colored = "2"
+dialoguer = "0.11"
+syntect = "5"
+
+# Detection
+yara = "0.28"
+sha2 = "0.10"
+
+# Config
+toml = "0.8"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+dirs = "5"
+
+# Async
+tokio = { version = "1", features = ["rt-multi-thread", "process", "io-util", "fs"] }
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = "0.3"
+
+# Error handling
+thiserror = "2"
+anyhow = "1"
+
+[dev-dependencies]
+tempfile = "3"
+assert_cmd = "2"
+predicates = "3"
+
+[profile.release]
+lto = true
+strip = true

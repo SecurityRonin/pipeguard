@@ -287,9 +287,9 @@ Contact: [TBD]
 
 ## License
 
-Dual-licensed under MIT and Apache 2.0.
+MIT License - Copyright (c) 2026 Security Ronin
 
-Enterprise features require a commercial license.
+Enterprise features are available in [pipeguard-pro](https://github.com/security-ronin/pipeguard-pro) (proprietary license).
 
 ---
 
