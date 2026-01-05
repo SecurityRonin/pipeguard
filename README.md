@@ -278,6 +278,69 @@ Full-featured endpoint security with behavioral analysis. **Limitation:** Design
 
 ---
 
+## Why Hasn't This Been Solved Before?
+
+If pre-execution interception is so valuable, why hasn't anyone built it? Fair question.
+
+### Prior Attempts
+
+| Tool | Year | Approach | Why It Failed |
+|------|------|----------|---------------|
+| [pipethis](https://github.com/ellotheth/pipethis) | 2016 | Require script authors to cryptographically sign | **Adoption problem** - malware authors won't cooperate |
+| [Sysdig Falco](https://sysdig.com/blog/friends-dont-let-friends-curl-bash/) | 2018 | Behavioral rules via "fbash" wrapper | **Still executes the script** - detects aftermath, not content |
+| [Server-side detection](https://www.idontplaydarts.com/2016/04/detecting-curl-pipe-bash-server-side/) | 2016 | Detect piped requests via timing/User-Agent | **Only works for attackers** - defense requires client-side |
+
+### Why The Gap Existed
+
+**1. The threat was theoretical until 2024**
+
+| Era | Victims | Attack Vector |
+|-----|---------|---------------|
+| 2010-2023 | Developers who review scripts | Compromised legitimate installers |
+| 2024-2025 | Anyone who uses AI/search | Fake CAPTCHAs, AI-generated guides |
+
+Security vendors didn't prioritize it because victims were "sophisticated users who should know better."
+
+**2. Shell interception is genuinely difficult**
+
+- ZLE keyboard bindings are poorly documented
+- Bash preexec has subtle edge cases
+- Pipes don't create files (no hook point for file-based scanners)
+- Must handle `curl|sh`, `wget|bash`, `fetch|zsh`, heredocs, subshells...
+
+**3. Security vendors optimize for enterprise revenue**
+
+- EDR sells to CISOs on "threat blocked" metrics
+- Post-execution behavioral detection still counts as "blocked"
+- "Pipe interception" is harder to market than "AI-powered threat detection"
+
+**4. Cultural resistance from the developer community**
+
+The community that created `curl|bash` is the same one that [normalized it](https://gist.github.com/btm/6700524):
+> "It uses the same channel as downloading a repository signing key"
+
+Suggesting it's dangerous was met with "just review the script first."
+
+**5. Apple's design philosophy**
+
+Apple intentionally excludes piped content from Gatekeeper:
+> "Terminal users know what they're doing"
+
+This was reasonable when Terminal was for developers. It's not reasonable when AI tells grandma to paste commands.
+
+### What Changed
+
+| Then (2010-2023) | Now (2024-2025) |
+|------------------|-----------------|
+| Victims: developers | Victims: anyone who uses AI |
+| Attack: find vulnerable scripts | Attack: AI generates "helpful" guides |
+| Scale: targeted | Scale: 500%+ increase in ClickFix |
+| Tooling: manual | Tooling: ClickFix builder kits for $50 |
+
+**PipeGuard's timing:** The threat matured from theoretical to mass-scale. The building blocks (YARA, ZLE, preexec) are well-understood. Nobody assembled them for this specific problem because the problem didn't exist at scale until now.
+
+---
+
 ## PipeGuard Pro
 
 For enterprise deployments, [**PipeGuard Pro**](https://github.com/SecurityRonin/pipeguard-pro) adds:
