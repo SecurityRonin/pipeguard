@@ -1,4 +1,4 @@
-# pipeguard Design Document
+# PipeGuard Design Document
 
 **Date:** 2026-01-05
 **Status:** Approved
@@ -8,7 +8,7 @@
 
 ## Overview
 
-pipeguard is a security tool that protects macOS users from malicious `curl | bash` attacks by intercepting pipe-to-interpreter patterns, scanning content for threats, and blocking known malware.
+PipeGuard is a security tool that protects macOS users from malicious `curl | bash` attacks by intercepting pipe-to-interpreter patterns, scanning content for threats, and blocking known malware.
 
 ### Problem Statement
 
