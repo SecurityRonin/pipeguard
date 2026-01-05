@@ -65,43 +65,37 @@ Users have been **pre-conditioned** by years of tutorials to:
 
 ### Detection Pipeline
 
-```
-Input (script content)
-         │
-         ▼
-┌─────────────────────────────────────┐
-│ Stage 1: YARA Pattern Matching ~5ms │
-│ • 10 rule categories                │
-│ • Custom rules supported            │
-└─────────────────┬───────────────────┘
-                  │
-         ▼
-┌─────────────────────────────────────┐
-│ Stage 2: AV Integration    ~50-200ms│
-│ • Apple XProtect YARA rules         │
-│ • ClamAV (clamd socket)             │
-└─────────────────┬───────────────────┘
-                  │
-         ▼
-┌─────────────────────────────────────┐
-│ Stage 3: Sandbox Analysis    ~1-3s  │
-│ • macOS sandbox-exec dry-run        │
-│ • Captures file/network/process     │
-│ • Only for medium threats           │
-└─────────────────┬───────────────────┘
-                  │
-         ▼
-┌─────────────────────────────────────┐
-│ Stage 4: Cloud AI [Enterprise] ~500ms│
-│ • Encrypted payload transmission    │
-│ • Behavioral analysis + explanation │
-└─────────────────┬───────────────────┘
-                  │
-         ▼
-    Threat Level Calculation
-    🟡 Low (1-6) → warn + prompt
-    🟠 Medium (7-8) → sandbox + approve
-    🔴 High (9-10) → block
+```mermaid
+flowchart TD
+    A[/"📥 Input (script content)"/] --> B
+
+    subgraph Stage1["Stage 1: YARA Pattern Matching (~5ms)"]
+        B["10 rule categories<br/>Custom rules supported"]
+    end
+
+    B --> C
+
+    subgraph Stage2["Stage 2: AV Integration (~50-200ms)"]
+        C["Apple XProtect YARA rules<br/>ClamAV (clamd socket)"]
+    end
+
+    C --> D
+
+    subgraph Stage3["Stage 3: Sandbox Analysis (~1-3s)"]
+        D["macOS sandbox-exec dry-run<br/>Captures file/network/process<br/>Only for medium threats"]
+    end
+
+    D --> E
+
+    subgraph Stage4["Stage 4: Cloud AI - Enterprise (~500ms)"]
+        E["Encrypted payload transmission<br/>Behavioral analysis + explanation"]
+    end
+
+    E --> F{{"🎯 Threat Level"}}
+
+    F -->|"1-6"| G["🟡 Low<br/>Warn + Prompt"]
+    F -->|"7-8"| H["🟠 Medium<br/>Sandbox + Approve"]
+    F -->|"9-10"| I["🔴 High<br/>Block"]
 ```
 
 ### YARA Rule Categories
@@ -133,17 +127,18 @@ Input (script content)
 
 All cloud transmissions use **age encryption** to prevent enterprise TLS inspection from flagging malware content:
 
-```
-Client                          TLS Proxy                    Server
-  │                                │                            │
-  │ POST encrypted_blob            │                            │
-  │ ─────────────────────────────► │                            │
-  │                                │  Sees: random bytes        │
-  │                                │  No signatures to match    │
-  │                                │ ──────────────────────────►│
-  │                                │                            │
-  │                                │                    Decrypts│
-  │                                │                    Analyzes│
+```mermaid
+sequenceDiagram
+    participant C as 🖥️ Client
+    participant P as 🔍 TLS Proxy
+    participant S as ☁️ Server
+
+    C->>P: POST encrypted_blob
+    Note over P: Sees: random bytes<br/>No signatures to match
+    P->>S: Forward encrypted_blob
+    Note over S: Decrypts with age<br/>Analyzes content
+    S-->>P: Encrypted response
+    P-->>C: Forward response
 ```
 
 ---
@@ -177,21 +172,18 @@ Client                          TLS Proxy                    Server
 
 ### Fleet Policy Enforcement
 
-```
-MDM (Jamf/Kandji/Mosyle/Intune)
-         │
-         ▼
-┌─────────────────────────────────────┐
-│ Configuration Profile               │
-│ /Library/Managed Preferences/       │
-│ com.pipeguard.plist                 │
-│                                     │
-│ • high_action = "block"             │
-│ • allow_force_override = false      │
-│ • ai_analysis_required = true       │
-│                                     │
-│ [LOCKED - user cannot change]       │
-└─────────────────────────────────────┘
+```mermaid
+flowchart TD
+    A["🏢 MDM<br/>(Jamf / Kandji / Mosyle / Intune)"] --> B
+
+    subgraph Profile["Configuration Profile"]
+        B["📁 /Library/Managed Preferences/<br/>com.pipeguard.plist"]
+        C["high_action = block<br/>allow_force_override = false<br/>ai_analysis_required = true"]
+        D["🔒 LOCKED - user cannot change"]
+    end
+
+    B --> C
+    C --> D
 ```
 
 ### Open Source vs Enterprise
