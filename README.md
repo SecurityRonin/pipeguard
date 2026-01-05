@@ -247,24 +247,113 @@ cargo build --release --features enterprise
 
 ---
 
+## Comparison with Existing Tools
+
+### Why PipeGuard?
+
+No existing tool specifically addresses the `curl | bash` attack vector with pre-execution interception. Current solutions either:
+- Detect **after** execution (EDR/behavioral)
+- Block **binaries** not scripts (Santa)
+- Monitor **network** not shell pipes (LuLu)
+- Require **manual review** (download-then-execute workflow)
+
+### Competitive Landscape
+
+| Tool | Approach | curl\|bash Coverage | Pre-Execution | Open Source |
+|------|----------|---------------------|---------------|-------------|
+| **PipeGuard** | Shell interception + YARA | ✅ **Primary focus** | ✅ Yes | ✅ MIT |
+| [Santa](https://github.com/northpolesec/santa) | Binary allowlisting | ❌ Scripts bypass | ❌ Binary only | ✅ Apache 2.0 |
+| [Objective-See Tools](https://objective-see.org/tools.html) | Persistence/network monitor | ❌ Post-execution | ❌ No | ✅ GPL |
+| [Sysdig Falco](https://falco.org/) | Runtime behavioral rules | ⚠️ Partial (post-exec) | ❌ No | ✅ Apache 2.0 |
+| [osquery](https://github.com/osquery/osquery) | SQL-based system queries | ⚠️ Detection only | ❌ No | ✅ Apache 2.0 |
+| [CrowdStrike Falcon](https://www.crowdstrike.com/en-us/platform/endpoint-security/falcon-for-macos/) | Cloud EDR | ⚠️ Behavioral detection | ❌ No | ❌ Commercial |
+| [Jamf Protect](https://www.jamf.com/products/jamf-protect/) | macOS-native EDR | ⚠️ Behavioral detection | ❌ No | ❌ Commercial |
+
+### PipeGuard's Unique Value
+
+| Differentiator | Description |
+|----------------|-------------|
+| **Pre-execution interception** | Scans script content *before* any code runs—not after damage is done |
+| **Shell-native integration** | ZLE binding intercepts at keystroke level; no kernel extension required |
+| **curl\|bash specific** | Purpose-built for the exact attack vector, not general-purpose EDR |
+| **Multi-stage detection** | YARA → XProtect → ClamAV → Sandbox → AI (layered, not single-point) |
+| **Gatekeeper gap coverage** | Addresses Apple's intentional design decision to not quarantine piped content |
+| **ClickFix/AMOS focused** | YARA rules tuned for 2024-2025 campaign IOCs |
+| **Enterprise-ready** | MDM integration, fleet policy, encrypted cloud analysis |
+| **Transparent** | Open source core—security tools should be auditable |
+
+### Detailed Tool Comparison
+
+#### [Santa](https://github.com/northpolesec/santa) (Google → North Pole Security)
+Binary authorization system using allowlists/blocklists. **Limitation:** Only controls *binary* execution—shell scripts piped to interpreters completely bypass Santa since `bash` itself is allowed.
+
+#### [Objective-See Tools](https://objective-see.org/tools.html) (Patrick Wardle)
+Excellent macOS security suite (BlockBlock, LuLu, KnockKnock). **Limitation:** Detects persistence and network activity *after* malware executes. No pre-execution script scanning.
+
+#### [Sysdig Falco](https://sysdig.com/blog/friends-dont-let-friends-curl-bash/)
+Runtime security with behavioral rules. Can monitor pipe installer child processes. **Limitation:** Detects suspicious *behavior* post-execution, not malicious *content* pre-execution.
+
+#### [osquery](https://github.com/osquery/osquery)
+Powerful system introspection via SQL. Includes [osx-attacks.conf](https://github.com/osquery/osquery/blob/master/packs/osx-attacks.conf) pack for reverse shell detection. **Limitation:** Query-based detection, not real-time interception.
+
+#### Enterprise EDR (CrowdStrike, Jamf Protect, Kandji)
+Full-featured endpoint security with behavioral analysis. **Limitation:** Designed for general threat detection, not specifically optimized for pipe-to-shell patterns. Detection typically post-execution.
+
+---
+
 ## Related Work
 
-### Academic
+### Academic Papers
 
-- [Ladisa et al., "SoK: Taxonomy of Attacks on Open-Source Software Supply Chains" (IEEE S&P 2023)](https://arxiv.org/abs/2204.04008)
+#### Supply Chain & Installation Security
+- P. Ladisa, H. Plate, M. Martinez, O. Barais. ["SoK: Taxonomy of Attacks on Open-Source Software Supply Chains."](https://arxiv.org/abs/2204.04008) *IEEE Symposium on Security and Privacy (S&P)*, 2023. — 107 attack vectors, 94 real-world incidents
+- C. Huang et al. ["DONAPI: Malicious NPM Packages Detector using Behavior Sequence Knowledge Mapping."](https://www.usenix.org/conference/usenixsecurity24/presentation/huang-cheng) *USENIX Security*, 2024.
+- M. Zimmermann et al. ["Small World with High Risks: A Study of Security Threats in the npm Ecosystem."](https://www.usenix.org/system/files/sec19-zimmermann.pdf) *USENIX Security*, 2019.
 
-### Industry
+#### Provenance-Based Detection
+- X. Han et al. ["You Are What You Do: Hunting Stealthy Malware via Data Provenance Analysis."](https://www.ndss-symposium.org/wp-content/uploads/2020/02/24167-paper.pdf) *NDSS*, 2020. — Script-based attack detection via system provenance
+- W. U. Hassan et al. ["ORTHRUS: Achieving High Quality of Attribution in Provenance-based Intrusion Detection."](https://tfjmp.org/publications/2025-usenixsec.pdf) *USENIX Security*, 2025.
+- B. Bilot et al. ["A Comprehensive Analysis of State-of-the-Art Provenance-based Intrusion Detection Systems."](https://www.usenix.org/system/files/usenixsecurity25-bilot.pdf) *USENIX Security*, 2025.
 
-- [MITRE ATT&CK T1204.004](https://attack.mitre.org/techniques/T1204/004/) - Malicious Copy and Paste
-- [Unit42 Gatekeeper Bypass](https://unit42.paloaltonetworks.com/gatekeeper-bypass-macos/)
-- [Huntress AMOS Analysis](https://www.huntress.com/blog/amos-stealer-chatgpt-grok-ai-trust)
-- [kicksecure curl|bash analysis](https://www.kicksecure.com/wiki/Dev/curl_bash_pipe)
+#### macOS Security
+- J. Blochberger et al. ["State of the Sandbox: Investigating macOS Application Security."](https://dl.acm.org/doi/10.1145/3338498.3358654) *ACM CCS Workshop*, 2019.
+- D. Blazakis. ["The Apple Sandbox."](https://www.researchgate.net/publication/228889694_The_Apple_Sandbox) *ISE*, 2011. — Foundational sandbox-exec research
 
-### Tools
+#### YARA & Signature Detection
+- A. Lockett. ["Assessing the Effectiveness of YARA Rules for Signature-Based Malware Detection and Classification."](https://arxiv.org/abs/2111.13910) *arXiv*, 2021.
+- Z. Li et al. ["Malware Detection Using Automated Generation of YARA Rules on Dynamic Features."](https://dl.acm.org/doi/10.1007/978-3-031-17551-0_21) *SciSec*, 2022. — 97% accuracy with ML-generated rules
 
-- [UXProtect](https://digitasecurity.com/uxprotect/) - XProtect rule visualization
-- [bash-preexec](https://github.com/rcaloras/bash-preexec) - Preexec hooks for Bash
+#### Shell & Code Injection
+- K. Z. Snow et al. ["SHELLOS: Enabling Fast Detection and Forensic Analysis of Code Injection Attacks."](https://www.usenix.org/conference/usenix-security-11/shellos-enabling-fast-detection-and-forensic-analysis-code-injection) *USENIX Security*, 2011.
+
+### Industry Research
+
+#### Threat Intelligence
+- Microsoft Threat Intelligence. ["Think Before You Click(Fix): Analyzing the ClickFix Social Engineering Technique."](https://www.microsoft.com/en-us/security/blog/2025/08/21/think-before-you-clickfix-analyzing-the-clickfix-social-engineering-technique/) Aug 2025. — 500%+ attack surge
+- Proofpoint. ["ClickFix Social Engineering Technique Floods Threat Landscape."](https://www.proofpoint.com/us/blog/threat-insight/security-brief-clickfix-social-engineering-technique-floods-threat-landscape) 2025. — State-sponsored adoption
+- HHS. ["ClickFix Attacks Sector Alert."](https://www.hhs.gov/sites/default/files/clickfix-attacks-sector-alert-tlpclear.pdf) Oct 2024. — Official TLP:CLEAR report
+- Unit 42. ["Gatekeeper Bypass: Uncovering Weaknesses in a macOS Security Mechanism."](https://unit42.paloaltonetworks.com/gatekeeper-bypass-macos/) 2023.
+- Unit 42. ["Preventing the ClickFix Attack Vector."](https://unit42.paloaltonetworks.com/preventing-clickfix-attack-vector/) Aug 2025.
+- Malwarebytes. ["Google Ads Funnel Mac Users to Poisoned AI Chats that Spread AMOS Infostealer."](https://www.malwarebytes.com/blog/news/2025/12/google-ads-funnel-mac-users-to-poisoned-ai-chats-that-spread-the-amos-infostealer) Dec 2025.
+- Huntress. ["AMOS Stealer: ChatGPT, Grok, and AI Trust."](https://www.huntress.com/blog/amos-stealer-chatgpt-grok-ai-trust) 2025.
+
+#### Technical Analysis
+- SNAKE Security. ["PipePunisher: Breaking the PIPE - Abusing PIPE to Shell Installations."](https://snakesecurity.org/blog/pipepunisher-exploiting-shell-install-scripts/) — Timing-based curl\|bash detection
+- kicksecure. ["curl bash pipe - Security Discussion."](https://www.kicksecure.com/wiki/Dev/curl_bash_pipe) — Comprehensive risk analysis
+- Sysdig. ["Friends Don't Let Friends Curl \| Bash."](https://www.sysdig.com/blog/friends-dont-let-friends-curl-bash/) — Falco-based defense approach
+- Microsoft. ["Gatekeeper's Achilles Heel: Unearthing a macOS Vulnerability."](https://www.microsoft.com/en-us/security/blog/2022/12/19/gatekeepers-achilles-heel-unearthing-a-macos-vulnerability/) Dec 2022. — CVE-2022-42821
+- WithSecure Labs. ["ESFang: Exploring the macOS Endpoint Security Framework for Threat Detection."](https://labs.withsecure.com/publications/esfang-exploring-the-macos-endpoint-security-framework-for-threat-detection)
+
+### Reference Standards
+- [MITRE ATT&CK T1204.004](https://attack.mitre.org/techniques/T1204/004/) - Malicious Copy and Paste (User Execution)
+- [Apple Endpoint Security Framework](https://developer.apple.com/documentation/endpointsecurity) - Official documentation
+
+### Tools & Libraries
+- [YARA](https://virustotal.github.io/yara/) - Pattern matching swiss knife
 - [age](https://age-encryption.org/) - Modern file encryption
+- [bash-preexec](https://github.com/rcaloras/bash-preexec) - Preexec hooks for Bash
+- [UXProtect](https://digitasecurity.com/uxprotect/) - XProtect rule visualization
+- [Objective-See Tools](https://objective-see.org/tools.html) - macOS security suite
 
 ---
 
