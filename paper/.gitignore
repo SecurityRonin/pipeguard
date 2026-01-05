@@ -1,0 +1,26 @@
+# Quarto output
+_output/
+.quarto/
+
+# LaTeX intermediates
+*.aux
+*.bbl
+*.blg
+*.log
+*.out
+*.toc
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.synctex(busy)
+
+# Generated files
+*.tex
+!_extensions/**/*.tex
+
+# Editor files
+*~
+.DS_Store
+
+/.quarto/
+**/*.quarto_ipynb

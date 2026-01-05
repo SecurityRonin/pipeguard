@@ -1,0 +1,83 @@
+# Why Existing Defenses Fail {#sec-defenses-fail}
+
+## macOS Security Architecture
+
+macOS employs multiple security layers, but `curl | bash` bypasses all of them.
+
+**Gatekeeper** verifies that applications are signed by identified developers and notarized by Apple. It relies on the `com.apple.quarantine` extended attribute, set when files are downloaded through sanctioned channels (browsers, Mail.app). Content piped directly to a shell interpreter never receives this attribute---it flows from network to execution without touching the filesystem in a way that triggers quarantine.
+
+**XProtect** provides signature-based malware detection against known patterns. While XProtect can scan arbitrary data, it is typically invoked only for quarantined files or specific system operations. Piped content does not trigger XProtect scanning by default.
+
+**System Integrity Protection (SIP)** prevents modification of protected system locations but does not restrict execution of malicious scripts in user space.
+
+**Transparency, Consent, and Control (TCC)** may prompt for folder access, but many attacks operate within already-permitted directories or exfiltrate data without triggering TCC prompts.
+
+```{=latex}
+\begin{table}[h]
+\centering
+\caption{macOS security controls vs. curl|bash}
+\small
+\begin{tabular}{ll}
+\hline
+\textbf{Control} & \textbf{Status for curl|bash} \\
+\hline
+Gatekeeper & Bypassed (no quarantine attribute) \\
+XProtect & Bypassed (no file to scan) \\
+TCC & Partial (may prompt for some access) \\
+SIP & Not applicable (user-space execution) \\
+\hline
+\end{tabular}
+\label{tab:macos-controls}
+\end{table}
+```
+
+Apple's design reflects a reasonable assumption: Terminal users know what they're doing. This was appropriate when Terminal was exclusively for developers. It is dangerously inappropriate when AI assistants tell non-technical users to paste commands they cannot evaluate.
+
+## Traditional Security Gaps
+
+**Antivirus** solutions operate on files. When content streams directly from `curl` to `bash`, there is no file to scan. By the time malware writes to disk (if it does), initial damage---credential theft, data exfiltration---may already be complete.
+
+**Endpoint Detection and Response (EDR)** systems detect malicious *behavior* after execution begins. They identify suspicious process trees, file writes, and network connections. But behavioral detection means the malicious code has already run. For infostealers that operate quickly, EDR catches the aftermath, not the attack.
+
+```{=latex}
+\begin{table}[h]
+\centering
+\caption{Traditional security timing gap}
+\small
+\begin{tabular}{ll}
+\hline
+\textbf{Stage} & \textbf{Traditional AV/EDR} \\
+\hline
+Script received via curl & No file to scan \\
+Script piped to bash & No interception point \\
+Script executes & Damage begins \\
+Behavioral detection & Catches aftermath \\
+\hline
+\end{tabular}
+\label{tab:timing-gap}
+\end{table}
+```
+
+Evidence from real attacks confirms this gap. AMOS samples show detection by only 5-8 of 60+ VirusTotal engines [@kandji2024amos]. MacSync Stealer samples were detected by only 1 engine [@jamf2024macsync]. ClickFix kits explicitly guarantee antivirus bypass [@microsoft2024clickfix].
+
+## Existing Security Tools
+
+Several tools provide macOS security capabilities, but none addresses pre-execution pipe interception:
+
+**Santa** [@santa] provides binary allowlisting, controlling which executables can run. However, Santa operates on *binaries*, not interpreted scripts. When a user runs `curl | bash`, the `bash` binary is allowed---it's a system component. Santa cannot inspect or block the *content* being interpreted.
+
+**Objective-See Tools** [@wardle2019art] provide valuable macOS security utilities: BlockBlock monitors persistence mechanisms, LuLu provides firewall capabilities, KnockKnock audits installed software. These tools detect malicious *behavior* after execution begins---persistence writes, network connections---not malicious content before execution.
+
+**Sysdig Falco** [@falco] provides runtime security monitoring using behavioral rules. Falco can detect suspicious process hierarchies spawned by shell commands. However, Falco operates post-execution; it identifies that something bad happened, not that something bad is about to happen.
+
+**osquery** [@osquery] enables SQL-based system querying for security monitoring, including detection rules for reverse shells and suspicious processes. Like Falco, osquery is a detection/response tool, not a prevention mechanism.
+
+## The Gap
+
+No existing tool provides **pre-execution content inspection for piped shell commands**. The security model assumes:
+
+1. Files are scanned before execution (true for downloads, false for pipes)
+2. Users inspect commands before running them (false with copy-paste conditioning)
+3. Behavioral detection is sufficient (false for fast-acting infostealers)
+
+PipeGuard fills this gap by intercepting at the shell boundary---after content arrives but before the interpreter executes it.

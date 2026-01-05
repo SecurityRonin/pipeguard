@@ -1,0 +1,21 @@
+% Minimal USENIX-style header for Quarto
+% Avoid redefining commands that conflict with Pandoc template
+
+% Times font
+\usepackage{mathptmx}
+\usepackage[T1]{fontenc}
+
+% Tighter columns
+\setlength{\columnsep}{0.33in}
+
+% Section formatting - bold, not too large
+\usepackage{titlesec}
+\titleformat{\section}{\normalfont\large\bfseries}{\thesection}{1em}{}
+\titleformat{\subsection}{\normalfont\normalsize\bfseries}{\thesubsection}{1em}{}
+
+% Compact lists
+\usepackage{enumitem}
+\setlist{nosep,leftmargin=*}
+
+% Better tables
+\usepackage{booktabs}

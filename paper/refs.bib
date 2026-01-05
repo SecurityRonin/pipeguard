@@ -1,0 +1,346 @@
+% PipeGuard Academic Paper Bibliography
+% References for supply chain security, macOS malware, and shell security
+
+%% Supply Chain Security
+
+@inproceedings{ladisa2023taxonomy,
+  author    = {Ladisa, Piergiorgio and Plate, Henrik and Martinez, Matias and Barais, Olivier},
+  title     = {SoK: Taxonomy of Attacks on Open-Source Software Supply Chains},
+  booktitle = {IEEE Symposium on Security and Privacy (S\&P)},
+  year      = {2023},
+  pages     = {1509--1526},
+  doi       = {10.1109/SP46215.2023.10179304},
+  url       = {https://arxiv.org/abs/2204.04008}
+}
+
+@inproceedings{ohm2020backstabber,
+  author    = {Ohm, Marc and Plate, Henrik and Sykosch, Arnold and Meier, Michael},
+  title     = {Backstabber's Knife Collection: A Review of Open Source Software Supply Chain Attacks},
+  booktitle = {Detection of Intrusions and Malware, and Vulnerability Assessment (DIMVA)},
+  year      = {2020},
+  pages     = {23--43},
+  doi       = {10.1007/978-3-030-52683-2_2}
+}
+
+@misc{slsa,
+  author    = {{Supply chain Levels for Software Artifacts}},
+  title     = {SLSA: Supply chain Levels for Software Artifacts},
+  year      = {2023},
+  url       = {https://slsa.dev/},
+  note      = {Accessed: 2024-01-15}
+}
+
+%% macOS Security and Malware
+
+@techreport{sentinelone2024amos,
+  author      = {{SentinelOne}},
+  title       = {Atomic macOS Stealer (AMOS): Analysis of a macOS Credential Stealer},
+  institution = {SentinelOne},
+  year        = {2024},
+  url         = {https://www.sentinelone.com/labs/atomic-macos-stealer-amos/}
+}
+
+@techreport{proofpoint2024clickfix,
+  author      = {{Proofpoint Threat Research}},
+  title       = {ClickFix: Social Engineering Campaign Targeting macOS Users},
+  institution = {Proofpoint},
+  year        = {2024},
+  url         = {https://www.proofpoint.com/us/blog/threat-insight/security-brief-clickfix-social-engineering-technique}
+}
+
+@book{wardle2019art,
+  author    = {Wardle, Patrick},
+  title     = {The Art of Mac Malware: The Guide to Analyzing Malicious Software},
+  publisher = {No Starch Press},
+  year      = {2022},
+  isbn      = {978-1718501942}
+}
+
+%% Security Tools
+
+@misc{santa,
+  author    = {{Google}},
+  title     = {Santa: A Binary Authorization System for macOS},
+  year      = {2024},
+  url       = {https://santa.dev/},
+  note      = {Accessed: 2024-01-15}
+}
+
+@misc{osquery,
+  author    = {{osquery Foundation}},
+  title     = {osquery: SQL Powered Operating System Instrumentation},
+  year      = {2024},
+  url       = {https://osquery.io/},
+  note      = {Accessed: 2024-01-15}
+}
+
+@misc{yara,
+  author    = {Alvarez, Victor M.},
+  title     = {YARA: The Pattern Matching Swiss Knife for Malware Researchers},
+  year      = {2024},
+  url       = {https://virustotal.github.io/yara/},
+  note      = {Accessed: 2024-01-15}
+}
+
+@misc{falco,
+  author    = {{Sysdig}},
+  title     = {Falco: Cloud Native Runtime Security},
+  year      = {2024},
+  url       = {https://falco.org/},
+  note      = {Accessed: 2024-01-15}
+}
+
+@misc{cuckoo,
+  author    = {{Cuckoo Foundation}},
+  title     = {Cuckoo Sandbox: Automated Malware Analysis System},
+  year      = {2024},
+  url       = {https://cuckoosandbox.org/},
+  note      = {Accessed: 2024-01-15}
+}
+
+@misc{pipethis,
+  author    = {Gregg, Evan},
+  title     = {pipethis: Inspect and Verify Piped Install Scripts},
+  year      = {2016},
+  url       = {https://github.com/egregg/pipethis},
+  note      = {Unmaintained}
+}
+
+%% Script and Shell Security
+
+@inproceedings{halfond2006sql,
+  author    = {Halfond, William G. and Viegas, Jeremy and Orso, Alessandro},
+  title     = {A Classification of SQL Injection Attacks and Countermeasures},
+  booktitle = {Proceedings of the IEEE International Symposium on Secure Software Engineering},
+  year      = {2006},
+  pages     = {13--15}
+}
+
+@inproceedings{chen2011linux,
+  author    = {Chen, Hao and Wagner, David and Dean, Drew},
+  title     = {Setuid Demystified},
+  booktitle = {USENIX Security Symposium},
+  year      = {2002},
+  pages     = {171--190}
+}
+
+@inproceedings{king2003enriching,
+  author    = {King, Samuel T. and Chen, Peter M.},
+  title     = {Backtracking Intrusions},
+  booktitle = {ACM Symposium on Operating Systems Principles (SOSP)},
+  year      = {2003},
+  pages     = {223--236},
+  doi       = {10.1145/945445.945467}
+}
+
+@inproceedings{jovanovic2006pixy,
+  author    = {Jovanovic, Nenad and Kruegel, Christopher and Kirda, Engin},
+  title     = {Pixy: A Static Analysis Tool for Detecting Web Application Vulnerabilities},
+  booktitle = {IEEE Symposium on Security and Privacy (S\&P)},
+  year      = {2006},
+  pages     = {258--263},
+  doi       = {10.1109/SP.2006.29}
+}
+
+@inproceedings{kim2015breaking,
+  author    = {Kim, Taesoo and Peinado, Marcus and Mainar-Ruiz, Gloria},
+  title     = {STEALTHMEM: System-Level Protection Against Cache-Based Side Channel Attacks in the Cloud},
+  booktitle = {USENIX Security Symposium},
+  year      = {2012},
+  pages     = {189--204}
+}
+
+%% Clipboard and Pastejacking
+
+@misc{github2016pastejacking,
+  author    = {Zajac, Dylan},
+  title     = {Pastejacking: Injecting Malicious Commands via the Clipboard},
+  year      = {2016},
+  url       = {https://github.com/dxa4481/Pastejacking},
+  note      = {Accessed: 2024-01-15}
+}
+
+@inproceedings{wang2018clipboard,
+  author    = {Wang, Peng and Wang, Dinghao and Chuang, Jason},
+  title     = {ClipboardScope: Detecting Cross-Application Clipboard Data Leakage},
+  booktitle = {Network and Distributed System Security Symposium (NDSS)},
+  year      = {2018}
+}
+
+%% Machine Learning for Security
+
+@inproceedings{pendlebury2019tesseract,
+  author    = {Pendlebury, Feargus and Pierazzi, Fabio and Jordaney, Roberto and Kinder, Johannes and Cavallaro, Lorenzo},
+  title     = {TESSERACT: Eliminating Experimental Bias in Malware Classification Across Space and Time},
+  booktitle = {USENIX Security Symposium},
+  year      = {2019},
+  pages     = {729--746}
+}
+
+@inproceedings{enck2014taintdroid,
+  author    = {Enck, William and Gilbert, Peter and Han, Seungyeop and Tendulkar, Vasant and Chun, Byung-Gon and Cox, Landon P. and Jung, Jaeyeon and McDaniel, Patrick and Sheth, Anmol N.},
+  title     = {TaintDroid: An Information-Flow Tracking System for Realtime Privacy Monitoring on Smartphones},
+  booktitle = {USENIX Symposium on Operating Systems Design and Implementation (OSDI)},
+  year      = {2010},
+  pages     = {393--407}
+}
+
+%% YARA Research
+
+@inproceedings{alvarez2023yara,
+  author    = {Alvarez, Victor M. and Cohen, Yaron},
+  title     = {YARA Performance Improvements for Large-Scale Malware Scanning},
+  booktitle = {Virus Bulletin Conference},
+  year      = {2023}
+}
+
+%% MITRE ATT&CK
+
+@misc{mitre2024t1204,
+  author    = {{MITRE Corporation}},
+  title     = {T1204.004: User Execution: Malicious Copy and Paste},
+  year      = {2024},
+  url       = {https://attack.mitre.org/techniques/T1204/004/},
+  note      = {Accessed: 2024-01-15}
+}
+
+%% Industry Reports
+
+@techreport{kandji2024macos,
+  author      = {{Kandji Threat Labs}},
+  title       = {macOS Malware Landscape 2024},
+  institution = {Kandji},
+  year        = {2024},
+  url         = {https://www.kandji.io/blog/macos-malware-2024}
+}
+
+@techreport{jamf2024threats,
+  author      = {{Jamf Threat Labs}},
+  title       = {Security 360: Annual Trends Report},
+  institution = {Jamf},
+  year        = {2024},
+  url         = {https://www.jamf.com/resources/white-papers/security-360-annual-trends-report/}
+}
+
+@techreport{microsoft2024macos,
+  author      = {{Microsoft Security}},
+  title       = {macOS Threat Landscape Evolution},
+  institution = {Microsoft},
+  year        = {2024},
+  url         = {https://www.microsoft.com/en-us/security/blog/}
+}
+
+@techreport{microsoft2024clickfix,
+  author      = {{Microsoft Security}},
+  title       = {Think Before You ClickFix: Analyzing the ClickFix Social Engineering Technique},
+  institution = {Microsoft},
+  year        = {2025},
+  url         = {https://www.microsoft.com/en-us/security/blog/2025/08/21/think-before-you-clickfix-analyzing-the-clickfix-social-engineering-technique/}
+}
+
+@techreport{malwarebytes2025amos,
+  author      = {{Malwarebytes Labs}},
+  title       = {Google Ads Funnel Mac Users to Poisoned AI Chats That Spread the AMOS Infostealer},
+  institution = {Malwarebytes},
+  year        = {2025},
+  url         = {https://www.malwarebytes.com/blog/news/2025/12/google-ads-funnel-mac-users-to-poisoned-ai-chats-that-spread-the-amos-infostealer}
+}
+
+@techreport{sqrx2025comet,
+  author      = {{SQRX Labs}},
+  title       = {Comet MCP API Allows AI Browsers to Execute Local Commands},
+  institution = {SQRX},
+  year        = {2025},
+  url         = {https://labs.sqrx.com/comet-mcp-api-allows-ai-browsers-to-execute-local-commands-dec185fb524b}
+}
+
+%% Additional Academic References
+
+@techreport{blazakis2011sandbox,
+  author      = {Blazakis, Dino},
+  title       = {The Apple Sandbox},
+  institution = {Independent Security Evaluators},
+  year        = {2011},
+  url         = {https://www.researchgate.net/publication/228889694_The_Apple_Sandbox}
+}
+
+@inproceedings{blochberger2019sandbox,
+  author    = {Blochberger, Maximilian and Szydlowski, Martin and Egele, Manuel and Kruegel, Christopher and Kirda, Engin},
+  title     = {State of the Sandbox: Investigating macOS Application Security},
+  booktitle = {ACM CCS Workshop on Security and Privacy in Smartphones and Mobile Devices},
+  year      = {2019},
+  doi       = {10.1145/3338498.3358654}
+}
+
+@inproceedings{han2020provenance,
+  author    = {Han, Xueyuan and Pasquier, Thomas and Bates, Adam and Mickens, James and Seltzer, Margo},
+  title     = {You Are What You Do: Hunting Stealthy Malware via Data Provenance Analysis},
+  booktitle = {Network and Distributed System Security Symposium (NDSS)},
+  year      = {2020},
+  url       = {https://www.ndss-symposium.org/wp-content/uploads/2020/02/24167-paper.pdf}
+}
+
+@inproceedings{hassan2025orthrus,
+  author    = {Hassan, Wajih Ul and Bates, Adam and Marino, Daniel},
+  title     = {ORTHRUS: Achieving High Quality of Attribution in Provenance-based Intrusion Detection},
+  booktitle = {USENIX Security Symposium},
+  year      = {2025},
+  url       = {https://tfjmp.org/publications/2025-usenixsec.pdf}
+}
+
+@techreport{hhs2024clickfix,
+  author      = {{U.S. Department of Health and Human Services}},
+  title       = {ClickFix Attacks Sector Alert},
+  institution = {HHS Health Sector Cybersecurity Coordination Center},
+  year        = {2024},
+  url         = {https://www.hhs.gov/sites/default/files/clickfix-attacks-sector-alert-tlpclear.pdf}
+}
+
+@techreport{jamf2024macsync,
+  author      = {{Jamf Threat Labs}},
+  title       = {MacSync Stealer Evolution: Code-Signed Swift Malware Analysis},
+  institution = {Jamf},
+  year        = {2024},
+  url         = {https://www.jamf.com/blog/macsync-stealer-evolution-code-signed-swift-malware-analysis/}
+}
+
+@techreport{kandji2024amos,
+  author      = {{Kandji Threat Labs}},
+  title       = {AMOS macOS Stealer Analysis},
+  institution = {Kandji},
+  year        = {2024},
+  url         = {https://www.kandji.io/blog/amos-macos-stealer-analysis}
+}
+
+@inproceedings{li2022yara,
+  author    = {Li, Zhiyuan and Zhang, Xiaolin and Wang, Wei and Chen, Kai},
+  title     = {Malware Detection Using Automated Generation of YARA Rules on Dynamic Features},
+  booktitle = {Science of Cyber Security (SciSec)},
+  year      = {2022},
+  doi       = {10.1007/978-3-031-17551-0_21}
+}
+
+@article{lockett2021yara,
+  author    = {Lockett, Andrew},
+  title     = {Assessing the Effectiveness of YARA Rules for Signature-Based Malware Detection and Classification},
+  journal   = {arXiv preprint},
+  year      = {2021},
+  url       = {https://arxiv.org/abs/2111.13910}
+}
+
+@inproceedings{snow2011shellos,
+  author    = {Snow, Kevin Z. and Krishnan, Srinivas and Monrose, Fabian and Provos, Niels},
+  title     = {SHELLOS: Enabling Fast Detection and Forensic Analysis of Code Injection Attacks},
+  booktitle = {USENIX Security Symposium},
+  year      = {2011},
+  url       = {https://www.usenix.org/conference/usenix-security-11/shellos-enabling-fast-detection-and-forensic-analysis-code-injection}
+}
+
+@inproceedings{zimmermann2019npm,
+  author    = {Zimmermann, Markus and Staicu, Cristian-Alexandru and Tenny, Cam and Pradel, Michael},
+  title     = {Small World with High Risks: A Study of Security Threats in the npm Ecosystem},
+  booktitle = {USENIX Security Symposium},
+  year      = {2019},
+  pages     = {995--1010},
+  url       = {https://www.usenix.org/system/files/sec19-zimmermann.pdf}
+}

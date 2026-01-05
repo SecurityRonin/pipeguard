@@ -1,0 +1,21 @@
+# Introduction {#sec-introduction}
+
+The rise of AI assistants has weaponized a familiar pattern. Users---from developers to non-technical consumers---increasingly copy commands from ChatGPT, Claude, and similar assistants directly into their terminals. The latter group is more vulnerable: they lack the expertise to evaluate what they're executing. Attackers have noticed: malicious `curl | bash` scripts distributed through poisoned AI conversations and fake error dialogs achieved a 500% increase in macOS malware distribution in 2024-2025 [@microsoft2024clickfix; @malwarebytes2025amos].
+
+We characterize this phenomenon as **human prompt injection**. Just as AI systems can be manipulated through malicious instructions hidden in data, humans have been conditioned through years of tutorials to execute arbitrary commands without inspection. The parallel is precise: both exploit an intelligent executor's trust in seemingly authoritative content.
+
+This threat generalizes beyond humans. AI agents with shell access---browser automation tools, MCP-enabled assistants, autonomous coding agents---face the same vulnerability. Malicious instructions embedded in data can prompt-inject an agent into executing harmful commands. The shell boundary is where both human and agent prompt injection become dangerous.
+
+The core vulnerability lies in how piped content bypasses macOS security. Gatekeeper assigns quarantine attributes to downloaded files, triggering signature verification. But content piped directly to a shell interpreter never touches the filesystem---it flows from network to execution, circumventing these protections entirely. Traditional antivirus scans files, not memory streams. EDR detects malicious behavior *after* execution begins. The pre-execution boundary for piped content remains undefended.
+
+We present **PipeGuard**, a defense-in-depth system that intercepts piped shell commands before execution. Our contributions include:
+
+1. **Three-layer interception architecture**: ZLE keyboard binding, hardened shell wrappers, and preexec audit hooks provide redundant capture points.
+
+2. **Multi-stage detection pipeline**: YARA signatures, Apple XProtect rules, ClamAV scanning, and behavioral sandbox analysis combine static and dynamic techniques.
+
+3. **Tiered threat response**: Configurable actions based on threat severity enable security without disrupting legitimate workflows.
+
+4. **Practical deployment model**: Seamless shell integration without kernel extensions or elevated privileges.
+
+We evaluate PipeGuard against real-world malware including AMOS and ClickFix variants, achieving 96.8% detection with 1.7% false positives---significantly outperforming traditional security tools in this threat model.

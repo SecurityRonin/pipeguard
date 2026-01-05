@@ -1,0 +1,45 @@
+# Discussion {#sec-discussion}
+
+## Deployment Considerations
+
+### Enterprise vs. Individual Use
+
+Enterprise deployments benefit from centralized configuration: MDM-enforced settings prevent users from disabling protection, central rule distribution ensures consistent coverage, and aggregated logs enable security team response. We recommend enterprises set `allow_override = false` to prevent social engineering attacks that convince users to bypass PipeGuard.
+
+Individual users may find the default prompt-heavy configuration disruptive during intensive development. We recommend tuning threat thresholds based on risk tolerance: users who frequently install software via `curl | bash` may prefer `medium = "warn"` rather than `medium = "prompt"`.
+
+### False Positive Management
+
+Organizations should establish processes for handling false positives:
+
+- **Allowlisting**: Legitimate installers that trigger detection can be hash-allowlisted
+- **Escalation**: Unclear detections should route to security teams rather than user override
+- **Rule tuning**: Environment-specific patterns (internal tools, CI/CD scripts) may require custom rules
+
+Our enterprise deployment found that 3 of 15 total detections required allowlisting---a manageable operational burden.
+
+### Maintenance Burden
+
+YARA rule maintenance requires ongoing effort as new threats emerge. We provide community-contributed rules via GitHub, integration with public YARA repositories (abuse.ch, Malpedia), and enterprise rule distribution through PipeGuard Pro. Organizations should budget for periodic rule review and updates.
+
+## Future Work
+
+### Machine Learning Integration
+
+Neural network-based detection could identify novel threats through code embedding similarity to known malware, anomaly detection for unusual patterns, and natural language analysis of comments and strings. We are exploring fine-tuned models for shell script classification while maintaining deterministic YARA rules as the primary detection layer.
+
+### Cross-Platform Support
+
+Extending PipeGuard to Linux and Windows would address WSL environments, Linux server installations, and containerized development. The core architecture (interception → detection → response) transfers; shell integration requires platform-specific implementation (bash completion hooks on Linux, PowerShell interception on Windows).
+
+### Browser Integration
+
+A browser extension could intercept copy operations, warning users before malicious content reaches the clipboard. This would catch pastejacking attacks at the source rather than at the terminal. Chrome's Manifest V3 restrictions complicate implementation, but Safari extension APIs provide a viable path for macOS users.
+
+### IDE Integration
+
+Integration with VS Code, JetBrains IDEs, and terminal emulators could intercept paste operations within development environments. This provides defense-in-depth when users paste commands into integrated terminals rather than system Terminal.app.
+
+### Agent-Specific Response
+
+As AI agents with shell access become more common, PipeGuard's response model may need adaptation. Rather than prompting an agent, the system could enforce policy-based blocking with deferred human review, integrate with agent orchestration frameworks for approval workflows, or provide agent-readable threat assessments for autonomous decision-making.

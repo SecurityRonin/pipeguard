@@ -1,0 +1,70 @@
+project:
+  type: default
+  output-dir: _output
+
+format:
+  pdf:
+    keep-tex: true
+    documentclass: IEEEtran
+    classoption: [conference]
+    papersize: letter
+    fontsize: 10pt
+    include-in-header:
+      text: |
+        \usepackage{cite}
+        \usepackage{amsmath,amssymb,amsfonts}
+        \usepackage{algorithmic}
+        \usepackage{graphicx}
+        \usepackage{textcomp}
+        \usepackage{xcolor}
+        \usepackage{booktabs}
+        \usepackage{hyperref}
+        \usepackage{listings}
+        \lstset{basicstyle=\ttfamily\scriptsize,breaklines=true,columns=flexible}
+        \def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+            T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+    pagestyle: plain
+
+title: "PipeGuard: Defending Against curl|bash Attacks Through Multi-Layer Shell Interception"
+
+author:
+  - name: Albert Hui
+    affiliations:
+      - name: Security Ronin
+    email: albert@securityronin.com
+  - name: Eliza Wan
+    affiliations:
+      - name: Blackpanda
+    email: wanyathei@gmail.com
+
+abstract: |
+  The proliferation of AI-assisted development has popularized
+  copy-paste installation commands, creating what we term "human prompt
+  injection"---users conditioned to execute arbitrary commands without
+  inspection. Attackers exploit this via malicious `curl | bash` scripts
+  distributed through poisoned AI conversations and fake error dialogs,
+  achieving a 500% increase in macOS malware distribution. We present
+  PipeGuard, a defense-in-depth system that intercepts piped shell
+  commands at multiple layers before execution. Our approach combines
+  ZLE keyboard binding interception, hardened shell wrappers, and
+  preexec audit hooks with a multi-stage detection pipeline using
+  YARA signatures, Apple XProtect rules, ClamAV, and behavioral
+  sandbox analysis. Unlike traditional antivirus solutions that detect
+  malware post-execution, PipeGuard operates at the pre-execution
+  boundary where piped content bypasses Gatekeeper protections.
+  We evaluate PipeGuard against real-world malware campaigns including
+  AMOS and ClickFix variants, demonstrating effective detection while
+  maintaining usability for legitimate installation workflows.
+
+keywords:
+  - supply chain security
+  - shell security
+  - malware detection
+  - macOS security
+  - YARA
+
+bibliography: refs.bib
+
+execute:
+  echo: false
+  warning: false

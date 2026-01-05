@@ -1,0 +1,25 @@
+# Conclusion {#sec-conclusion}
+
+The convergence of AI assistants and `curl | bash` installation patterns has created a new attack surface: human prompt injection. Users---increasingly including non-technical consumers---copy commands from AI-generated content without the expertise to evaluate what they're executing. This threat generalizes to AI agents with shell access, making the shell boundary a critical defense point.
+
+Traditional security tools fail to protect this boundary. Antivirus scans files, not memory streams. EDR detects behavior after execution, when damage is done. Gatekeeper's quarantine mechanism is bypassed entirely by piped content. The pre-execution boundary for shell commands has remained undefended.
+
+We presented PipeGuard, a defense-in-depth system that fills this gap. Three interception layers---ZLE keyboard binding, hardened shell wrappers, and preexec audit hooks---provide redundant capture points. A four-stage detection pipeline combining YARA signatures, Apple XProtect, ClamAV, and behavioral sandbox analysis achieves 96.8% detection against real-world malware while maintaining 1.7% false positives.
+
+Our evaluation demonstrates that PipeGuard significantly outperforms traditional security tools in this threat model, catching attacks that bypass filesystem-based detection. The system deploys without kernel extensions or elevated privileges, integrating seamlessly with existing shells.
+
+As AI assistants become the primary interface for software installation, the need for pre-execution defense will only grow. PipeGuard provides that defense today.
+
+# Availability
+
+PipeGuard is available at:
+
+- **Source code**: https://github.com/SecurityRonin/pipeguard
+- **Documentation**: https://pipeguard.dev
+- **YARA rules**: https://github.com/SecurityRonin/pipeguard-rules
+
+Enterprise features are available through PipeGuard Pro: enterprise@pipeguard.dev
+
+# Acknowledgments
+
+We thank the anonymous reviewers for their valuable feedback. We acknowledge the contributions of the open-source security community, particularly the YARA and ClamAV projects.

@@ -1,0 +1,180 @@
+# Architecture {#sec-architecture}
+
+PipeGuard employs a defense-in-depth architecture: three interception layers feed into a multi-stage detection pipeline, with configurable threat response. The system is implemented in Rust with shell integration components in Zsh, Bash, and Fish.
+
+## Interception Layers
+
+### Layer 1: ZLE Keyboard Binding
+
+The Zsh Line Editor (ZLE) provides hooks for intercepting user input before shell interpretation. We bind to paste events and bracketed paste sequences, capturing content before it reaches the command line:
+
+```zsh
+function _pipeguard_paste() {
+  local content="$CUTBUFFER"
+  if [[ "$content" =~ "curl.*\|.*bash" ]]; then
+    pipeguard scan --stdin <<< "$content"
+    [[ $? -eq 0 ]] && zle .yank || return 1
+  else
+    zle .yank
+  fi
+}
+zle -N yank _pipeguard_paste
+```
+
+This layer catches interactive paste operations---the primary vector for human prompt injection attacks.
+
+### Layer 2: Hardened Shell Wrappers
+
+We provide wrapper functions that shadow `curl` and `wget`, detecting when output is piped to interpreters:
+
+```bash
+curl() {
+  if [[ -p /dev/stdout ]] && [[ "$@" =~ "-.*[sS]" ]]; then
+    command curl "$@" | pipeguard scan --stdin
+  else
+    command curl "$@"
+  fi
+}
+```
+
+This layer catches script-based attacks and CI/CD pipelines where ZLE interception is unavailable. Wrappers are placed in PATH before system binaries.
+
+### Layer 3: Preexec Audit Hook
+
+The preexec hook executes before every command, providing audit logging and a final inspection opportunity:
+
+```bash
+preexec() {
+  pipeguard log --command "$1"
+  if [[ "$1" =~ "curl.*\|.*(ba)?sh" ]]; then
+    pipeguard audit --command "$1"
+  fi
+}
+```
+
+Even when active blocking is disabled, this layer maintains an audit trail for forensic analysis.
+
+**Defense in depth**: Bypassing one layer (e.g., `\curl` to avoid the wrapper) still triggers others (preexec logging). An attacker must evade all three layers simultaneously.
+
+## Detection Pipeline
+
+Intercepted content flows through four detection stages, each adding unique coverage:
+
+### Stage 1: YARA Pattern Matching (~5ms)
+
+YARA rules provide fast static pattern matching. We use the `yara-rust` crate with rules compiled at startup for performance:
+
+```rust
+let rules = Compiler::new()?
+    .add_rules_file("rules/core.yar")?
+    .compile()?;
+let matches = rules.scan_mem(content.as_bytes())?;
+```
+
+Our rule categories target:
+
+- Base64 obfuscation and encoding patterns
+- Staged downloaders (scripts fetching more scripts)
+- Reverse shell signatures (`/dev/tcp`, `nc -e`)
+- Persistence mechanisms (LaunchAgents, crontab)
+- AMOS/ClickFix-specific indicators of compromise
+- Cryptocurrency wallet targeting patterns
+
+### Stage 2: Apple XProtect Integration (~10ms)
+
+We invoke XProtect's scanning capabilities via the system service, leveraging Apple's continuously-updated malware signatures:
+
+```rust
+Command::new("/usr/libexec/XProtectService")
+    .arg("--scan")
+    .arg(&temp_path)
+    .output()?
+```
+
+This provides coverage for known macOS malware families without maintaining duplicate signatures.
+
+### Stage 3: ClamAV Deep Scan (~50ms)
+
+For content passing initial stages, ClamAV provides additional signature coverage through the daemon interface:
+
+```rust
+let stream = UnixStream::connect("/var/run/clamav/clamd.sock")?;
+stream.write_all(b"zINSTREAM\0")?;
+stream.write_all(&(content.len() as u32).to_be_bytes())?;
+stream.write_all(content.as_bytes())?;
+```
+
+ClamAV's extensive signature database catches threats that may not have macOS-specific YARA rules.
+
+### Stage 4: Behavioral Sandbox (~500ms)
+
+Content that passes static analysis enters a restricted sandbox for behavioral analysis. We use macOS `sandbox-exec` with a custom profile:
+
+```scheme
+(version 1)
+(deny default)
+(allow file-read* (subpath "/usr"))
+(allow file-read* (subpath "/System"))
+(allow file-write* (subpath "/tmp/pipeguard"))
+(deny network*)
+(deny file-write* (subpath (param "HOME")))
+(deny mach-lookup (global-name "com.apple.security.keychain"))
+```
+
+The sandbox restricts network access, home directory writes, and keychain access. We monitor for:
+
+- Attempted network connections (C2 communication)
+- File writes outside temp directories
+- Process spawning patterns
+- Environment variable harvesting
+
+Sandbox analysis runs asynchronously with a configurable timeout (default: 3 seconds).
+
+## Threat Response
+
+Detection results map to threat levels with configurable actions:
+
+```{=latex}
+\begin{table}[h]
+\centering
+\caption{Threat level response mapping}
+\small
+\begin{tabular}{llp{4.5cm}}
+\hline
+\textbf{Level} & \textbf{Default Action} & \textbf{Triggers} \\
+\hline
+Low (1-6) & Warn & Suspicious patterns, base64, env harvesting \\
+Medium (7-8) & Prompt & Staged downloads, persistence, privilege escalation \\
+High (9-10) & Block & Reverse shells, known malware IOCs, wallet targeting \\
+\hline
+\end{tabular}
+\label{tab:threat-levels}
+\end{table}
+```
+
+For human users, prompts display the threat rationale and allow informed override. For AI agents, policy-based blocking with logging enables later human review.
+
+Enterprise deployments configure defaults via MDM-managed profiles:
+
+```toml
+[response]
+low = "warn"
+medium = "prompt"
+high = "block"
+allow_override = false  # MDM can lock this
+
+[detection]
+enable_sandbox = true
+sandbox_timeout_ms = 3000
+```
+
+## Performance Design
+
+PipeGuard prioritizes minimal latency:
+
+- **Pre-compiled YARA rules**: Rules compile once at startup, not per-scan
+- **ClamAV daemon mode**: Persistent daemon avoids process spawn overhead
+- **Async sandbox**: Sandbox analysis runs in background with timeout
+- **Fast-fail pipeline**: High-confidence detections short-circuit later stages
+
+Typical analysis completes in <100ms for static stages. Sandbox adds ~500ms when triggered (medium-threat content only). Users experience negligible delay for legitimate commands.

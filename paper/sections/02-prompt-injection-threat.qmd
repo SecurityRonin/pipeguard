@@ -1,0 +1,96 @@
+# The Prompt Injection Threat {#sec-threat}
+
+## Human Prompt Injection
+
+We observe a precise parallel between AI prompt injection attacks and the social engineering of human users:
+
+```{=latex}
+\begin{table*}[t]
+\centering
+\caption{Comparison of AI prompt injection and human social engineering}
+\begin{tabular}{p{0.45\textwidth}p{0.45\textwidth}}
+\hline
+\textbf{AI Prompt Injection} & \textbf{Human Prompt Injection} \\
+\hline
+Malicious instructions hidden in data & Malicious commands hidden in "helpful" guides \\
+AI cannot distinguish user intent from injected commands & Users trained not to question Terminal commands \\
+Bypasses safety filters via context manipulation & Bypasses Gatekeeper via copy-paste \\
+Exploits trust in data sources & Exploits trust in AI/expert sources \\
+\hline
+\end{tabular}
+\label{tab:prompt-injection}
+\end{table*}
+```
+
+Users have been **pre-conditioned** by years of tutorials to:
+
+- Run arbitrary `curl | bash` commands without inspection
+- Remove quarantine attributes reflexively (`xattr -d com.apple.quarantine`)
+- Trust formatted instructions from authoritative-looking sources
+
+This conditioning creates vulnerability. The `curl | bash` pattern became normalized through legitimate use: Homebrew, Rust, Node Version Manager, and countless developer tools train users that piping curl to bash is standard practice. Repeated safe use builds false confidence---the same psychological mechanism that makes phishing effective.
+
+## Attack Campaigns
+
+The exploitation of this conditioning has evolved through distinct phases:
+
+**Legacy Era (2010s)**: The pattern becomes normalized. Users learn to trust `curl | bash` as the standard installation method for developer tools.
+
+**ClickFix Campaigns (2024)**: Fake CAPTCHAs and error dialogs trick users into pasting commands into Terminal. Microsoft reports a 500% increase in these attacks [@microsoft2024clickfix]. Health and Human Services issued a sector alert on ClickFix targeting healthcare organizations [@hhs2024clickfix].
+
+**AI Poisoning (2025)**: Shared ChatGPT and Grok conversations deliver AMOS infostealer through seemingly helpful installation guides [@malwarebytes2025amos]. Users trust AI-generated instructions implicitly.
+
+**Agentic Exploitation (2025)**: Browser automation tools like Comet's MCP API allow AI agents to execute local commands via prompt injection [@sqrx2025comet]. The attack surface extends beyond direct user interaction.
+
+Recent malware campaigns demonstrate the severity:
+
+**Atomic macOS Stealer (AMOS)** uses social engineering to convince users to execute curl commands that download credential-stealing malware. The malware targets browser passwords, cryptocurrency wallets, and keychain data [@sentinelone2024amos]. Detection rates on VirusTotal remain low---5-8 of 60+ engines [@kandji2024amos].
+
+**ClickFix** campaigns present fake error dialogs instructing users to paste "fix" commands into Terminal. Builder kits sell for approximately \$50, enabling mass deployment [@proofpoint2024clickfix]. The attacks guarantee antivirus bypass by design.
+
+**Pastejacking** attacks modify clipboard contents when users copy visible code, substituting malicious commands with embedded newlines for immediate execution [@github2016pastejacking].
+
+## Agent Prompt Injection
+
+The same threat model applies to AI agents with shell access. When an agent processes untrusted data---web pages, documents, API responses---malicious instructions can manipulate the agent into executing harmful commands.
+
+Consider an MCP-enabled coding assistant. A user asks it to analyze a GitHub repository. The repository's README contains hidden instructions that prompt-inject the agent into running `curl malicious.example/payload.sh | bash`. The agent, trusting the data it processes, executes the command.
+
+This is not theoretical. Comet browser's MCP API demonstrated that AI agents can be induced to execute local commands through prompt injection in web content [@sqrx2025comet]. As AI agents gain more capabilities, this attack surface grows.
+
+The shell boundary is the choke point for both threats. Whether a human pastes a command or an agent invokes a subprocess, the content flows through the same interpreters. Defense at this boundary protects against both.
+
+## Threat Model
+
+We consider adversaries with:
+
+1. **Content injection**: Ability to serve malicious content via URLs that targets are induced to curl
+2. **Social engineering**: Capability to convince humans or manipulate agents into executing commands
+3. **Clipboard manipulation**: JavaScript-based attacks that modify copied content
+4. **No local access**: Adversary does not have prior code execution on the target
+
+We explicitly exclude adversaries with root access, ability to modify PipeGuard itself, or kernel-level persistence.
+
+### Attack Vectors
+
+**Direct malicious URLs**: The adversary controls a server returning malicious scripts. Payloads may appear legitimate initially, with malicious content obfuscated or fetched dynamically.
+
+**Compromised legitimate sources**: Typosquatting domains, compromised CDN infrastructure, or supply chain attacks on upstream dependencies.
+
+**AI-mediated attacks**: Training data poisoning, prompt injection to override safety guidelines, or exploitation of hallucinations to suggest malicious tools.
+
+**Pastejacking**: JavaScript modifies clipboard on copy, substituting malicious commands with newlines for immediate execution.
+
+### Security Goals
+
+PipeGuard aims to achieve:
+
+1. **Pre-execution detection**: Identify threats before code executes
+2. **Defense in depth**: Multiple independent interception layers
+3. **Configurable response**: Allow users/enterprises to set appropriate threat responses
+4. **Usability preservation**: Minimize friction for legitimate workflows
+5. **Transparency**: Users can inspect intercepted content and detection rationale
+
+### Non-Goals
+
+PipeGuard does not attempt to prevent all shell-based attacks, replace endpoint security solutions, defend against adversaries with existing system access, or guarantee zero false positives.

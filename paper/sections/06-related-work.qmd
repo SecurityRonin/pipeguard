@@ -1,0 +1,41 @@
+# Related Work {#sec-related-work}
+
+## Supply Chain Security
+
+Ladisa et al. [@ladisa2023taxonomy] provide a comprehensive taxonomy of attacks on open source supply chains, identifying 107 unique attack vectors across 94 real-world incidents. Their work highlights the growing sophistication of supply chain attacks and the need for defense at multiple layers. PipeGuard addresses one specific vector in this taxonomy: malicious installation scripts.
+
+Ohm et al. [@ohm2020backstabber] analyze malicious code injection in package managers, demonstrating how attackers exploit post-install scripts---a mechanism similar to `curl | bash` execution. Their findings inform our YARA rule development for detecting staged payloads.
+
+The SLSA framework [@slsa] establishes supply chain security levels focusing on build provenance. PipeGuard complements SLSA by addressing installation-time threats that occur after build but before deployment.
+
+Zimmermann et al. [@zimmermann2019npm] study security threats in the npm ecosystem, finding that a single malicious package can impact thousands of downstream projects. While focused on npm, their analysis of dependency-based attacks informs our understanding of how `curl | bash` serves as an entry point for supply chain compromise.
+
+## Provenance-Based Detection
+
+Han et al. [@han2020provenance] present PROVDETECTOR for hunting stealthy malware via data provenance analysis. Their approach tracks information flow through system calls, which could complement PipeGuard's pre-execution scanning with post-execution verification.
+
+Hassan et al. [@hassan2025orthrus] achieve high-quality attribution in provenance-based intrusion detection. Their work on reducing false positives in provenance graphs informs our multi-stage detection approach.
+
+## Malware Detection Approaches
+
+YARA [@yara] has become the standard for malware pattern matching. Lockett [@lockett2021yara] assesses YARA's effectiveness for signature-based detection, finding high accuracy when rules are well-maintained. Li et al. [@li2022yara] demonstrate 97% accuracy with ML-generated YARA rules, suggesting future directions for automated rule generation in PipeGuard.
+
+Pendlebury et al. [@pendlebury2019tesseract] address concept drift in ML-based malware detection, a challenge we avoid through deterministic YARA rules with manual updates. Their work suggests caution in over-relying on ML approaches for rapidly-evolving threats.
+
+## Shell and Script Security
+
+Snow et al. [@snow2011shellos] present SHELLOS for fast detection of code injection attacks, using hardware virtualization for efficient analysis. While focused on binary shellcode, their performance optimization techniques inform our sandbox design.
+
+Jovanovic et al. [@jovanovic2006pixy] pioneer static analysis for web application vulnerability detection. PipeGuard adapts similar taint-tracking concepts for shell script analysis.
+
+Kim et al. [@kim2015breaking] analyze sandbox escape techniques, informing our sandbox profile design to minimize attack surface while maintaining analysis fidelity.
+
+## macOS Security Research
+
+Blochberger et al. [@blochberger2019sandbox] investigate macOS application security through sandbox analysis, finding inconsistent policy enforcement. Their findings validate our decision to use custom sandbox profiles rather than relying on system defaults.
+
+Blazakis [@blazakis2011sandbox] provides foundational research on macOS sandbox-exec, which PipeGuard uses for behavioral analysis.
+
+## Clipboard Security
+
+Wang et al. [@wang2018clipboard] study cross-application clipboard data leakage. While focused on privacy, their analysis of clipboard manipulation informs our understanding of pastejacking attacks that PipeGuard's ZLE interception layer addresses.
