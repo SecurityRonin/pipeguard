@@ -1,4 +1,4 @@
-# pipeguard
+# PipeGuard
 
 **Defending against the `curl | bash` attack vector**
 
@@ -8,7 +8,7 @@
 
 **Problem:** macOS users have been trained for years to run `curl | bash` and bypass security controls (`xattr -d com.apple.quarantine`). Attackers now exploit this via AI-generated "installation guides" (AMOS/ClickFix campaigns). MITRE classifies this as [T1204.004](https://attack.mitre.org/techniques/T1204/004/).
 
-**Solution:** pipeguard intercepts pipe-to-interpreter patterns, scans content with YARA/AV before execution, and blocks known malware. Three-layer defense: ZLE keyboard interception → hardened shell wrappers → preexec audit logging.
+**Solution:** PipeGuard intercepts pipe-to-interpreter patterns, scans content with YARA/AV before execution, and blocks known malware. Three-layer defense: ZLE keyboard interception → hardened shell wrappers → preexec audit logging.
 
 **Status:** Design complete. Implementation in progress.
 
@@ -16,7 +16,7 @@
 # Instead of this (dangerous):
 curl https://example.com/install.sh | bash
 
-# pipeguard intercepts automatically:
+# PipeGuard intercepts automatically:
 # → Downloads to temp
 # → Scans with YARA (10 rule categories) + Apple XProtect rules + ClamAV
 # → Shows threat level: 🟡 Low | 🟠 Medium | 🔴 High
