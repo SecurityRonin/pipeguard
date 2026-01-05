@@ -251,8 +251,7 @@ cargo build --release --features enterprise
 
 ### Academic
 
-- Kotzias et al., "Runtime Detection of Software Supply Chain Attacks" (2023)
-- Ladisa et al., "Taxonomy of Attacks on Open-Source Supply Chains" (IEEE S&P 2023)
+- [Ladisa et al., "SoK: Taxonomy of Attacks on Open-Source Software Supply Chains" (IEEE S&P 2023)](https://arxiv.org/abs/2204.04008)
 
 ### Industry
 
