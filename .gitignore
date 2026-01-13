@@ -21,3 +21,4 @@ Cargo.lock
 
 # Test fixtures (malware samples)
 tests/fixtures/malicious/*.real
+.worktrees/
