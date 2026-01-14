@@ -417,3 +417,265 @@ rule anti_analysis_debugger {
     condition:
         $ptrace or ($sysctl and $debug)
 }
+
+// =============================================================================
+// Category 11: Python Supply Chain Attacks (Severity: 7-9)
+// Source: DataDog GuardDog patterns
+// =============================================================================
+
+rule python_subprocess_shell_injection {
+    meta:
+        severity = 8
+        description = "Python subprocess with shell injection"
+        category = "supply_chain"
+    strings:
+        $subprocess = "subprocess.Popen" nocase
+        $system = "os.system" nocase
+        $shell = "shell=True"
+        $curl = "curl" nocase
+        $wget = "wget" nocase
+        $bash = /bash|sh/
+    condition:
+        ($subprocess and $shell) or ($system and ($curl or $wget or $bash))
+}
+
+rule python_exec_base64 {
+    meta:
+        severity = 8
+        description = "Python exec with base64 obfuscation"
+        category = "supply_chain"
+    strings:
+        $exec = /exec|eval/
+        $b64_module = "base64" nocase
+        $b64decode = "b64decode"
+        $import = "__import__"
+    condition:
+        $exec and ($b64decode or ($b64_module and $import))
+}
+
+rule python_exec_remote {
+    meta:
+        severity = 9
+        description = "Python exec/eval with remote code"
+        category = "supply_chain"
+    strings:
+        $exec = /exec|eval/
+        $urllib = "urllib" nocase
+        $urlopen = "urlopen"
+        $requests = "requests" nocase
+        $http = /https?:\/\//
+    condition:
+        $exec and ($urlopen or $requests) and $http
+}
+
+rule python_env_exfiltration {
+    meta:
+        severity = 8
+        description = "Python environment variable exfiltration"
+        category = "supply_chain"
+    strings:
+        $os_environ = "os.environ"
+        $getenv = "os.getenv"
+        $aws_key = "AWS_ACCESS_KEY_ID" nocase
+        $aws_secret = "AWS_SECRET_ACCESS_KEY" nocase
+        $post = /requests\.post|urllib.*urlopen/
+        $http = /https?:\/\//
+    condition:
+        ($os_environ or ($getenv and ($aws_key or $aws_secret))) and $post and $http
+}
+
+rule python_ssh_key_exfil {
+    meta:
+        severity = 9
+        description = "Python SSH key exfiltration"
+        category = "supply_chain"
+    strings:
+        $ssh_key = ".ssh/id_rsa"
+        $ssh_dir = ".ssh/"
+        $socket = "socket.socket"
+        $open_read = "open("
+        $send = /\.send|\.sendall/
+    condition:
+        ($ssh_key or $ssh_dir) and $socket and $open_read and $send
+}
+
+rule python_download_execute {
+    meta:
+        severity = 8
+        description = "Python download and execute binary"
+        category = "supply_chain"
+    strings:
+        $urllib = "urllib.request.urlretrieve"
+        $chmod = "os.chmod"
+        $stat = "stat.S_IXUSR"
+        $system = "os.system"
+        $popen = "subprocess.Popen"
+        $http = /https?:\/\//
+    condition:
+        $urllib and $http and $chmod and ($system or $popen)
+}
+
+rule python_fileless_execution {
+    meta:
+        severity = 9
+        description = "Python fileless (memory-only) execution"
+        category = "supply_chain"
+    strings:
+        $exec = /exec|eval/
+        $urllib = "urllib" nocase
+        $urlopen = "urlopen"
+        $read = ".read()"
+        $http = /https?:\/\//
+    condition:
+        $exec and $urlopen and $read and $http
+}
+
+rule python_nohup_background {
+    meta:
+        severity = 7
+        description = "Python silent background execution"
+        category = "supply_chain"
+    strings:
+        $nohup = "nohup"
+        $background = "&"
+        $devnull = "/dev/null"
+        $system = "os.system"
+        $curl = "curl" nocase
+    condition:
+        $nohup and $background and ($devnull or $system) and $curl
+}
+
+// =============================================================================
+// Category 12: Node.js/npm Supply Chain Attacks (Severity: 7-8)
+// =============================================================================
+
+rule npm_malicious_install_script {
+    meta:
+        severity = 8
+        description = "npm install script with malicious command"
+        category = "supply_chain"
+    strings:
+        $scripts = "\"scripts\""
+        $postinstall = "postinstall" nocase
+        $preinstall = "preinstall" nocase
+        $curl = "curl" nocase
+        $wget = "wget" nocase
+        $bash = /\|\s*bash/
+        $sh = /\|\s*sh/
+    condition:
+        $scripts and ($postinstall or $preinstall) and ($curl or $wget) and ($bash or $sh)
+}
+
+rule npm_node_exec_injection {
+    meta:
+        severity = 8
+        description = "npm node -e with command injection"
+        category = "supply_chain"
+    strings:
+        $node_e = /node\s+-e/
+        $child_process = "child_process"
+        $exec = ".exec"
+        $curl = "curl" nocase
+        $eval = "eval"
+    condition:
+        $node_e and ($child_process and $exec) or ($node_e and $curl and $eval)
+}
+
+// =============================================================================
+// Category 13: Real-World Attack Patterns (Severity: 9-10)
+// =============================================================================
+
+rule python_setuptools_custom_install {
+    meta:
+        severity = 9
+        description = "Suspicious setuptools custom install command"
+        category = "supply_chain"
+    strings:
+        $setuptools = "setuptools.command.install"
+        $custom_class = "class CustomInstallCommand"
+        $os_system = "os.system"
+        $subprocess = "subprocess"
+        $bash_i = "bash -i"
+        $dev_tcp = "/dev/tcp/"
+    condition:
+        $setuptools and $custom_class and ($os_system or $subprocess) and ($bash_i or $dev_tcp)
+}
+
+rule python_tempfile_exec_hidden {
+    meta:
+        severity = 8
+        description = "Temporary file with hidden execution (pythonw pattern)"
+        category = "supply_chain"
+    strings:
+        $tempfile = "tempfile" nocase
+        $namedtemp = "NamedTemporaryFile"
+        $exec = /exec|eval/
+        $urlopen = "urlopen"
+        $pythonw = "pythonw"
+        $sys_exec = "sys.executable"
+    condition:
+        ($tempfile or $namedtemp) and $exec and ($urlopen or $pythonw or $sys_exec)
+}
+
+rule python_obfuscated_imports {
+    meta:
+        severity = 7
+        description = "Obfuscated Python imports"
+        category = "supply_chain"
+    strings:
+        $__import__ = "__import__"
+        $chr = "chr("
+        $ord = "ord("
+        $join = "join("
+        $exec = /exec|eval/
+    condition:
+        $__import__ and ($chr or $ord) and $join and $exec
+}
+
+rule python_pastebin_c2 {
+    meta:
+        severity = 9
+        description = "Pastebin used as C2 channel"
+        category = "supply_chain"
+    strings:
+        $pastebin = /paste\.bingner\.com|pastebin\.com|paste\.ee/
+        $raw = "/raw/"
+        $exec = /exec|eval/
+        $urllib = "urllib" nocase
+    condition:
+        $pastebin and ($raw or $exec) and $urllib
+}
+
+rule python_reverseshell_obfuscated {
+    meta:
+        severity = 10
+        description = "Obfuscated Python reverse shell"
+        category = "supply_chain"
+    strings:
+        $socket = "socket.socket"
+        $connect = ".connect"
+        $subprocess = "subprocess"
+        $popen = "Popen"
+        $stdin = "stdin"
+        $stdout = "stdout"
+        $base64 = "base64"
+        $b64decode = "b64decode"
+    condition:
+        $socket and $connect and ($subprocess or $popen) and ($stdin or $stdout) and ($base64 or $b64decode)
+}
+
+rule python_shell_command_substitution {
+    meta:
+        severity = 8
+        description = "Shell command substitution in Python"
+        category = "supply_chain"
+    strings:
+        $os_system = "os.system"
+        $subprocess = "subprocess"
+        $backtick = "`"
+        $dollar_paren = "$("
+        $curl = "curl" nocase
+        $eval = "eval"
+    condition:
+        ($os_system or $subprocess) and ($backtick or $dollar_paren) and ($curl or $eval)
+}
