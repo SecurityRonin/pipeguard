@@ -107,25 +107,92 @@ fn cmd_install(dry_run: bool, shell: ShellType) -> anyhow::Result<ExitCode> {
         ShellType::Zsh => vec!["zsh"],
         ShellType::Bash => vec!["bash"],
         ShellType::Fish => vec!["fish"],
-        ShellType::All => vec!["zsh", "bash", "fish"],
+        ShellType::All => vec!["zsh", "bash"],  // Fish support TBD
     };
 
-    if dry_run {
-        println!("Would install shell integration for:");
-        for s in &shells_to_install {
-            println!("  - {}", s);
+    // Get executable directory (for finding shell hooks)
+    let exe_dir = std::env::current_exe()?
+        .parent()
+        .ok_or_else(|| anyhow::anyhow!("Could not determine executable directory"))?
+        .to_path_buf();
+
+    let home = dirs::home_dir()
+        .ok_or_else(|| anyhow::anyhow!("Could not determine home directory"))?;
+
+    for s in &shells_to_install {
+        match *s {
+            "bash" => {
+                let rc_file = home.join(".bashrc");
+                let hook_path = exe_dir.join("../shell/pipeguard.bash");
+
+                install_shell_hook(&rc_file, &hook_path, "bash", dry_run)?;
+            }
+            "zsh" => {
+                let rc_file = home.join(".zshrc");
+                let hook_path = exe_dir.join("../shell/pipeguard.zsh");
+
+                install_shell_hook(&rc_file, &hook_path, "zsh", dry_run)?;
+            }
+            "fish" => {
+                println!("  {} Fish integration not yet implemented", "⚠️".yellow());
+            }
+            _ => {}
         }
+    }
+
+    if !dry_run {
         println!();
-        println!("Run without --dry-run to apply changes.");
-    } else {
-        for s in &shells_to_install {
-            println!("Installing {} integration...", s);
-            // Actual installation would go here
+        println!("{} Shell integration installed!", "✓".green());
+        println!("Restart your shell or run:");
+        if shells_to_install.contains(&"bash") {
+            println!("  source ~/.bashrc");
         }
-        println!("Shell integration installed. Restart your shell or source the config.");
+        if shells_to_install.contains(&"zsh") {
+            println!("  source ~/.zshrc");
+        }
     }
 
     Ok(ExitCode::SUCCESS)
+}
+
+fn install_shell_hook(
+    rc_file: &Path,
+    hook_path: &Path,
+    shell_name: &str,
+    dry_run: bool,
+) -> anyhow::Result<()> {
+    let source_line = format!("\n# PipeGuard integration\n[ -f \"{}\" ] && source \"{}\"\n",
+        hook_path.display(), hook_path.display());
+
+    if dry_run {
+        println!("Would add to {}:", rc_file.display());
+        println!("{}", source_line.trim());
+        return Ok(());
+    }
+
+    // Check if already installed
+    if rc_file.exists() {
+        let content = std::fs::read_to_string(rc_file)?;
+        if content.contains("PipeGuard integration") {
+            println!("  {} {} integration already installed", "✓".green(), shell_name);
+            return Ok(());
+        }
+    }
+
+    // Create RC file if it doesn't exist
+    if !rc_file.exists() {
+        std::fs::File::create(rc_file)?;
+    }
+
+    // Append source line
+    use std::io::Write;
+    let mut file = std::fs::OpenOptions::new()
+        .append(true)
+        .open(rc_file)?;
+    file.write_all(source_line.as_bytes())?;
+
+    println!("  {} Installed {} integration", "✓".green(), shell_name);
+    Ok(())
 }
 
 fn cmd_config(action: ConfigAction) -> anyhow::Result<ExitCode> {
