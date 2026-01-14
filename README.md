@@ -105,7 +105,7 @@ User runs: curl https://... | bash
               ↓
     ┌─────────────────────────┐
     │  YARA Scanner           │
-    │  56+ detection rules    │
+    │  42+ detection rules    │
     └─────────┬───────────────┘
               ↓
     ┌─────────────────────────┐
@@ -204,7 +204,7 @@ pipeguard update cleanup
 
 **Implementation Complete. Testing in Progress.**
 
-- ✅ YARA rule engine (56 rules across 15 threat categories)
+- ✅ YARA rule engine (42 rules across 12 threat categories)
 - ✅ Shell integration (bash/zsh)
 - ✅ Smart content filtering (binary vs script detection)
 - ✅ Automatic updates (Ed25519 verified, rollback support)
