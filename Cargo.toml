@@ -60,6 +60,19 @@ assert_cmd = "2"
 predicates = "3"
 mockito = "1.5"
 rand = "0.8"
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[[bench]]
+name = "detection_benchmark"
+harness = false
+
+[[bench]]
+name = "latency_benchmark"
+harness = false
+
+[[bench]]
+name = "memory_benchmark"
+harness = false
 
 [profile.release]
 lto = true

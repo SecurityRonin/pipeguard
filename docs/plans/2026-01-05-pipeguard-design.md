@@ -1,8 +1,13 @@
 # PipeGuard Design Document
 
 **Date:** 2026-01-05
-**Status:** Approved
+**Status:** ⚠️ SUPERSEDED - Original design document (historical reference)
 **Author:** Security Research Team
+
+> **NOTE:** This document represents the original design plan. The actual implementation differs:
+> - **Planned:** 4-stage pipeline (YARA + XProtect + ClamAV + Sandbox)
+> - **Implemented:** 2-stage pipeline (Smart Content Filtering + YARA)
+> - See `paper/sections/04-architecture.qmd` for current architecture
 
 ---
 

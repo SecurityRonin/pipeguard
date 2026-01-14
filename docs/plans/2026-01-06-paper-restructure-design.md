@@ -1,8 +1,12 @@
 # Paper Restructure Design: Clarity Through Narrative
 
 **Date**: 2026-01-06
-**Status**: Approved
+**Status**: ✅ Structure implemented (technical details evolved)
 **Goal**: Reduce cognitive load, improve clarity and eloquence
+
+> **NOTE:** This document describes the paper structure and narrative approach (which was implemented).
+> Technical implementation details evolved from the original 4-stage detection pipeline to a 2-stage
+> pipeline (Smart Content Filtering + YARA). See current paper sections for accurate technical content.
 
 ## Overview
 
