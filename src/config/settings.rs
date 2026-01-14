@@ -27,6 +27,7 @@ pub struct Config {
     pub response: ResponseConfig,
     pub rules: RulesConfig,
     pub allowlist: AllowlistConfig,
+    pub updates: UpdatesConfig,
 }
 
 impl Default for Config {
@@ -36,6 +37,7 @@ impl Default for Config {
             response: ResponseConfig::default(),
             rules: RulesConfig::default(),
             allowlist: AllowlistConfig::default(),
+            updates: UpdatesConfig::default(),
         }
     }
 }
@@ -138,6 +140,34 @@ pub struct AllowlistConfig {
     hashes: HashSet<String>,
     #[serde(default)]
     domains: HashSet<String>,
+}
+
+/// Updates configuration.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct UpdatesConfig {
+    /// Enable automatic update checks
+    pub enabled: bool,
+    /// Automatically apply verified updates
+    pub auto_apply: bool,
+    /// Check interval in hours
+    pub check_interval_hours: u64,
+    /// GitHub repository for updates
+    pub source: String,
+    /// Number of versions to keep
+    pub keep_versions: usize,
+}
+
+impl Default for UpdatesConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            auto_apply: false,
+            check_interval_hours: 24,
+            source: "https://github.com/SecurityRonin/pipeguard".to_string(),
+            keep_versions: 3,
+        }
+    }
 }
 
 /// Helper for response override parsing.
