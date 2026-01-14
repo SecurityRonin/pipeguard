@@ -52,6 +52,12 @@ pub enum Commands {
         #[command(subcommand)]
         action: RulesAction,
     },
+
+    /// Manage automatic updates
+    Update {
+        #[command(subcommand)]
+        action: UpdateAction,
+    },
 }
 
 #[derive(Subcommand, Debug)]
@@ -77,6 +83,60 @@ pub enum RulesAction {
         /// Path to rules file or directory
         #[arg(short, long)]
         path: PathBuf,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+pub enum UpdateAction {
+    /// Check for available updates
+    Check {
+        /// Don't print output, only set exit code
+        #[arg(short, long)]
+        quiet: bool,
+
+        /// Force check even if recently checked
+        #[arg(short, long)]
+        force: bool,
+
+        /// Custom storage path for rules
+        #[arg(long)]
+        storage: Option<PathBuf>,
+    },
+
+    /// Apply an available update
+    Apply {
+        /// Specific version to apply (default: latest)
+        #[arg(short, long)]
+        version: Option<String>,
+
+        /// Custom storage path for rules
+        #[arg(long)]
+        storage: Option<PathBuf>,
+    },
+
+    /// Rollback to a previous version
+    Rollback {
+        /// Version to rollback to
+        #[arg(short, long)]
+        version: String,
+
+        /// Custom storage path for rules
+        #[arg(long)]
+        storage: Option<PathBuf>,
+    },
+
+    /// Show current version and update status
+    Status {
+        /// Custom storage path for rules
+        #[arg(long)]
+        storage: Option<PathBuf>,
+    },
+
+    /// Cleanup old versions
+    Cleanup {
+        /// Custom storage path for rules
+        #[arg(long)]
+        storage: Option<PathBuf>,
     },
 }
 
