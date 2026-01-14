@@ -1,9 +1,11 @@
 // src/update/mod.rs
 pub mod crypto;
 pub mod storage;
+pub mod manager;
 
 pub use crypto::CryptoVerifier;
 pub use storage::VersionedStorage;
+pub use manager::UpdateManager;
 
 #[derive(Debug, Clone)]
 pub struct UpdateConfig {
