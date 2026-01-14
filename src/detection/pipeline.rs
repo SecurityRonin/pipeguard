@@ -2,8 +2,9 @@
 
 use crate::detection::scanner::{ScanError, YaraScanner};
 use crate::detection::threat::{ThreatLevel, ThreatMatch, ThreatResponse};
+use crate::update::VersionedStorage;
 use sha2::{Digest, Sha256};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use thiserror::Error;
 
 /// Pipeline configuration options.
@@ -35,6 +36,9 @@ pub enum PipelineError {
 
     #[error("No rules found in directory")]
     NoRulesFound,
+
+    #[error("No active version: {0}")]
+    NoActiveVersion(#[from] anyhow::Error),
 }
 
 /// Orchestrates multi-stage threat detection.
@@ -71,6 +75,38 @@ impl DetectionPipeline {
         }
 
         Self::new(&combined_rules, config)
+    }
+
+    /// Create a pipeline from the active version in versioned storage.
+    ///
+    /// This loads rules from the currently active version managed by the update system.
+    /// Falls back to default storage location if not specified.
+    pub fn from_active_version(
+        storage_root: Option<PathBuf>,
+        config: PipelineConfig,
+    ) -> Result<Self, PipelineError> {
+        let storage_path = storage_root.unwrap_or_else(|| {
+            dirs::home_dir()
+                .expect("Could not determine home directory")
+                .join(".pipeguard/rules")
+        });
+
+        let storage = VersionedStorage::new(storage_path)?;
+
+        // Get the active version
+        let version = storage.current_version()?;
+
+        // Get the active version's directory path
+        let version_path = storage.version_path(&version)?;
+
+        // Read rules from active version
+        let rules = storage.read_rules(&version_path)?;
+
+        // Convert bytes to string
+        let rules_str = String::from_utf8(rules)
+            .map_err(|_| PipelineError::NoRulesFound)?;
+
+        Self::new(&rules_str, config)
     }
 
     /// Analyze content for threats.

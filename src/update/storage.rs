@@ -87,6 +87,15 @@ impl VersionedStorage {
         self.root.join("versions").join(version).exists()
     }
 
+    /// Get the path to a specific version directory
+    pub fn version_path(&self, version: &str) -> Result<PathBuf> {
+        let path = self.root.join("versions").join(version);
+        if !path.exists() {
+            anyhow::bail!("Version {} does not exist", version);
+        }
+        Ok(path)
+    }
+
     /// Check if version has .verified marker
     pub fn is_verified(&self, version: &str) -> Result<bool> {
         let marker = self.root.join("versions").join(version).join(".verified");
