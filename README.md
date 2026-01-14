@@ -71,8 +71,14 @@ Three severity levels:
 - Reverse shells (bash, netcat, Python, Perl)
 - Crypto wallet theft patterns
 - Persistence mechanisms (crontab, LaunchAgents)
-- Base64 obfuscation
-- Quarantine bypass techniques
+- Supply chain attacks (malicious npm/pip packages)
+- Base64 obfuscation and quarantine bypass
+
+**Automatic Updates**
+- Cryptographically verified rule updates
+- Automatic checks on shell startup (configurable interval)
+- One-command rollback if issues arise
+- Safe defaults (notify, don't auto-apply)
 
 **Zero Configuration**
 - Install once, stays active
@@ -99,7 +105,7 @@ User runs: curl https://... | bash
               ↓
     ┌─────────────────────────┐
     │  YARA Scanner           │
-    │  419 detection rules    │
+    │  56+ detection rules    │
     └─────────┬───────────────┘
               ↓
     ┌─────────────────────────┐
@@ -165,6 +171,31 @@ domains = [
     "raw.githubusercontent.com",
     "rust-lang.org",
 ]
+
+[updates]
+enabled = true                # Enable automatic update checks
+auto_apply = false            # Notify but don't auto-apply (safe default)
+check_interval_hours = 24     # Check for updates daily
+keep_versions = 3             # Keep last 3 versions for rollback
+```
+
+### Update Commands
+
+```bash
+# Check for updates
+pipeguard update check
+
+# Apply available update
+pipeguard update apply
+
+# Show current version
+pipeguard update status
+
+# Rollback to previous version
+pipeguard update rollback --version 1.0.0
+
+# Cleanup old versions
+pipeguard update cleanup
 ```
 
 ---
@@ -173,11 +204,12 @@ domains = [
 
 **Implementation Complete. Testing in Progress.**
 
-- ✅ YARA rule engine (419 rules)
+- ✅ YARA rule engine (56 rules across 15 threat categories)
 - ✅ Shell integration (bash/zsh)
-- ✅ Smart content filtering
+- ✅ Smart content filtering (binary vs script detection)
+- ✅ Automatic updates (Ed25519 verified, rollback support)
 - ✅ Installer script
-- ✅ Comprehensive test suite
+- ✅ Comprehensive test suite (32 tests passing)
 - 🔄 Real-world validation
 - 🔄 Performance benchmarks
 
