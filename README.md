@@ -43,7 +43,7 @@ In 2024-2025, campaigns like **ClickFix** and **AMOS** use fake CAPTCHAs, poison
 
 PipeGuard intercepts pipes before execution and scans content in real-time:
 
-1. **Intercepts** - Shell wrappers catch `curl | bash` patterns
+1. **Intercepts** - Four-layer defense catches `curl | bash` at the command line, paste, pipe, and audit levels
 2. **Filters** - Smart detection skips binaries, scans scripts
 3. **Scans** - YARA rules detect malicious patterns
 4. **Blocks** - Stops threats before code executes
@@ -62,10 +62,11 @@ Three severity levels:
 - Scans shell scripts and installation commands
 - Reduces performance overhead on legitimate downloads
 
-**Real-Time Protection**
-- Intercepts paste events (ZLE hooks)
-- Wraps `curl` and `wget` commands
-- Logs all piped commands for audit
+**Four-Layer Real-Time Protection**
+- **Layer 0: Accept-line interception** — sees full command line (`curl URL | bash`), pre-fetches and scans before execution, TOCTOU-safe
+- **Layer 1: ZLE paste interception** — detects pipe-to-shell patterns on paste, warns before Enter
+- **Layer 2: Shell wrappers** — wraps `curl`/`wget`, scans piped output as defense-in-depth
+- **Layer 3: Preexec audit** — logs all commands and flags pipe-to-shell patterns
 
 **YARA Detection**
 - Reverse shells (bash, netcat, Python, Perl)
@@ -90,29 +91,32 @@ Three severity levels:
 ## How It Works
 
 ```
-User runs: curl https://... | bash
+User types: curl https://... | bash
+                     ↓
+    ┌──────────────────────────────────┐
+    │  Layer 0: Accept-Line            │  ← Sees full command line
+    │  Detects "curl ... | bash"       │     Pre-fetches URL, scans content
+    │  Pre-fetch → Scan → Approve?     │     TOCTOU-safe execution
+    └─────────────┬────────────────────┘
+                  ↓ (if not caught by Layer 0)
+    ┌──────────────────────────────────┐
+    │  Layer 2: Shell Wrapper          │  ← Defense-in-depth
+    │  Intercepts piped curl/wget      │     Catches: command curl | bash
+    └─────────────┬────────────────────┘
                   ↓
-    ┌─────────────────────────┐
-    │  Shell Wrapper          │
-    │  (intercepts curl)      │
-    └─────────┬───────────────┘
-              ↓
-    ┌─────────────────────────┐
-    │  Smart Filter           │
-    │  Binary? → Skip         │
-    │  Script? → Scan         │
-    └─────────┬───────────────┘
-              ↓
-    ┌─────────────────────────┐
-    │  YARA Scanner           │
-    │  42+ detection rules    │
-    └─────────┬───────────────┘
-              ↓
-    ┌─────────────────────────┐
-    │  Threat Level           │
-    │  🟢 Allow / 🟡 Warn /   │
-    │  🔴 Block               │
-    └─────────────────────────┘
+    ┌──────────────────────────────────┐
+    │  Smart Filter                    │
+    │  Binary? → Skip  Script? → Scan │
+    └─────────────┬────────────────────┘
+                  ↓
+    ┌──────────────────────────────────┐
+    │  YARA Scanner (42 rules)         │
+    └─────────────┬────────────────────┘
+                  ↓
+    ┌──────────────────────────────────┐
+    │  Threat Response                 │
+    │  Allow / Warn / Prompt / Block   │
+    └──────────────────────────────────┘
 ```
 
 ---
@@ -205,7 +209,7 @@ pipeguard update cleanup
 **Implementation Complete. Testing in Progress.**
 
 - ✅ YARA rule engine (42 rules across 12 threat categories)
-- ✅ Shell integration (bash/zsh)
+- ✅ Four-layer shell interception (bash/zsh)
 - ✅ Smart content filtering (binary vs script detection)
 - ✅ Automatic updates (Ed25519 verified, rollback support)
 - ✅ Installer script
@@ -220,9 +224,10 @@ pipeguard update cleanup
 | Traditional AV | PipeGuard |
 |----------------|-----------|
 | Scans files on disk | Intercepts pipes before execution |
-| Detects malware after it runs | Blocks malware before it runs |
-| Binary-only protection | Script-aware protection |
-| Requires kernel extensions | Works in userspace |
+| Can't distinguish `curl \| bash` from `curl \| jq` | Sees full command line — zero false positives |
+| Detects malware after it runs | Pre-fetches and scans before code executes |
+| Binary-only protection | Script-aware YARA detection |
+| Requires kernel extensions | Works in userspace (shell hooks) |
 
 ---
 
