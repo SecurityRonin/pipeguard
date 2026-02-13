@@ -465,7 +465,7 @@ rule python_exec_remote {
         $requests = "requests" nocase
         $http = /https?:\/\//
     condition:
-        $exec and ($urlopen or $requests) and $http
+        $exec and ($urllib or $urlopen or $requests) and $http
 }
 
 rule python_env_exfiltration {
@@ -512,7 +512,7 @@ rule python_download_execute {
         $popen = "subprocess.Popen"
         $http = /https?:\/\//
     condition:
-        $urllib and $http and $chmod and ($system or $popen)
+        $urllib and $http and ($chmod or $stat) and ($system or $popen)
 }
 
 rule python_fileless_execution {
@@ -527,7 +527,7 @@ rule python_fileless_execution {
         $read = ".read()"
         $http = /https?:\/\//
     condition:
-        $exec and $urlopen and $read and $http
+        $exec and ($urllib or $urlopen) and $read and $http
 }
 
 rule python_nohup_background {
