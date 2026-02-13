@@ -22,3 +22,10 @@ Cargo.lock
 # Test fixtures (malware samples)
 tests/fixtures/malicious/*.real
 .worktrees/
+
+# Paper / submission (contains PII)
+paper/
+
+# Debug logs
+firebase-debug.log
+test-output.sh
