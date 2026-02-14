@@ -1,6 +1,7 @@
 // src/update/crypto.rs
 use anyhow::{Context, Result};
 use ed25519_dalek::{Signature, Verifier, VerifyingKey};
+use tracing::{debug, warn};
 
 // Embedded public key (replaced during build with actual key)
 // For now, use placeholder
@@ -8,6 +9,13 @@ const PIPEGUARD_PUBLIC_KEY: &[u8; 32] = &[0u8; 32];
 
 pub struct CryptoVerifier {
     public_key: VerifyingKey,
+}
+
+impl std::fmt::Debug for CryptoVerifier {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("CryptoVerifier")
+            .finish_non_exhaustive()
+    }
 }
 
 impl CryptoVerifier {
@@ -25,6 +33,7 @@ impl CryptoVerifier {
 
     /// Verify with custom public key (for testing and enterprise dual-sig)
     pub fn verify_with_key(&self, rules: &[u8], signature: &[u8], public_key: &[u8; 32]) -> Result<()> {
+        debug!("Verifying signature");
         let verifying_key = VerifyingKey::from_bytes(public_key)
             .context("Invalid public key format")?;
 
@@ -33,10 +42,16 @@ impl CryptoVerifier {
                 .map_err(|_| anyhow::anyhow!("Signature must be exactly 64 bytes"))?
         );
 
-        verifying_key.verify(rules, &signature)
-            .map_err(|_| anyhow::anyhow!("Signature verification failed: rules may be tampered or invalid"))?;
-
-        Ok(())
+        match verifying_key.verify(rules, &signature) {
+            Ok(()) => {
+                debug!("Signature verified successfully");
+                Ok(())
+            }
+            Err(_) => {
+                warn!("Signature verification failed");
+                Err(anyhow::anyhow!("Signature verification failed: rules may be tampered or invalid"))
+            }
+        }
     }
 }
 

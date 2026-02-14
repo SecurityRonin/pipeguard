@@ -2,7 +2,9 @@
 use anyhow::{Context, Result};
 use std::fs;
 use std::path::{Path, PathBuf};
+use tracing::debug;
 
+#[derive(Debug)]
 pub struct VersionedStorage {
     root: PathBuf,
 }
@@ -22,6 +24,7 @@ impl VersionedStorage {
         let version_path = self.root.join("versions").join(version);
         fs::create_dir_all(&version_path)
             .context("Failed to create version directory")?;
+        debug!(version = version, "Created version directory");
         Ok(version_path)
     }
 
@@ -66,6 +69,7 @@ impl VersionedStorage {
         fs::rename(&temp_link, &link_path)
             .context("Failed to activate version")?;
 
+        debug!(version = version, "Symlink updated to version");
         Ok(())
     }
 

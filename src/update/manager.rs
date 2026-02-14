@@ -1,9 +1,11 @@
 // src/update/manager.rs
 use anyhow::{Context, Result};
 use std::path::PathBuf;
+use tracing::{info, debug};
 
 use super::{UpdateConfig, CryptoVerifier, VersionedStorage};
 
+#[derive(Debug)]
 pub struct UpdateManager {
     storage: VersionedStorage,
     verifier: CryptoVerifier,
@@ -34,7 +36,10 @@ impl UpdateManager {
         // In real implementation, this would query GitHub Releases API
         match self.storage.current_version() {
             Ok(_) => Ok(None), // Already have a version
-            Err(_) => Ok(Some("latest".to_string())), // No active version
+            Err(_) => {
+                debug!("Update available");
+                Ok(Some("latest".to_string())) // No active version
+            }
         }
     }
 
@@ -64,6 +69,7 @@ impl UpdateManager {
         self.storage.activate_version(version)
             .context("Failed to activate version")?;
 
+        info!(version = version, "Version activated");
         Ok(())
     }
 
@@ -80,11 +86,13 @@ impl UpdateManager {
         self.storage.activate_version(version)
             .context("Failed to rollback to version")?;
 
+        info!(version = version, "Rolled back to version");
         Ok(())
     }
 
     /// Cleanup old versions according to config
     pub fn cleanup(&self) -> Result<()> {
+        debug!("Running version cleanup");
         self.storage.cleanup_old_versions(self.config.keep_versions)
             .context("Failed to cleanup old versions")
     }

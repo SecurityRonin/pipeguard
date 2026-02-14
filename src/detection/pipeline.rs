@@ -6,6 +6,7 @@ use crate::update::VersionedStorage;
 use sha2::{Digest, Sha256};
 use std::path::{Path, PathBuf};
 use thiserror::Error;
+use tracing::{debug, debug_span};
 
 /// Pipeline configuration options.
 #[derive(Debug, Clone)]
@@ -31,8 +32,11 @@ pub enum PipelineError {
     #[error("Scanner error: {0}")]
     ScannerError(#[from] ScanError),
 
-    #[error("Failed to read rules directory: {0}")]
-    RulesDirError(#[from] std::io::Error),
+    #[error("Failed to read rules from '{path}': {source}")]
+    RulesDirError {
+        path: PathBuf,
+        source: std::io::Error,
+    },
 
     #[error("No rules found in directory")]
     NoRulesFound,
@@ -42,6 +46,7 @@ pub enum PipelineError {
 }
 
 /// Orchestrates multi-stage threat detection.
+#[derive(Debug)]
 pub struct DetectionPipeline {
     scanner: YaraScanner,
     #[allow(dead_code)]
@@ -59,14 +64,28 @@ impl DetectionPipeline {
     pub fn from_rules_dir(dir: &Path, config: PipelineConfig) -> Result<Self, PipelineError> {
         let mut combined_rules = String::new();
 
-        for entry in std::fs::read_dir(dir)? {
-            let entry = entry?;
+        let entries = std::fs::read_dir(dir).map_err(|source| PipelineError::RulesDirError {
+            path: dir.to_path_buf(),
+            source,
+        })?;
+
+        for entry in entries {
+            let entry = entry.map_err(|source| PipelineError::RulesDirError {
+                path: dir.to_path_buf(),
+                source,
+            })?;
             let path = entry.path();
 
             if path.extension().is_some_and(|ext| ext == "yar" || ext == "yara") {
-                let content = std::fs::read_to_string(&path)?;
+                let content = std::fs::read_to_string(&path).map_err(|source| {
+                    PipelineError::RulesDirError {
+                        path: path.clone(),
+                        source,
+                    }
+                })?;
                 combined_rules.push_str(&content);
                 combined_rules.push('\n');
+                debug!(file = %path.display(), "Loaded rule file");
             }
         }
 
@@ -74,6 +93,7 @@ impl DetectionPipeline {
             return Err(PipelineError::NoRulesFound);
         }
 
+        debug!(total_rules = combined_rules.lines().filter(|l| l.trim_start().starts_with("rule ")).count(), "All rule files loaded");
         Self::new(&combined_rules, config)
     }
 
@@ -109,8 +129,14 @@ impl DetectionPipeline {
         Self::new(&rules_str, config)
     }
 
+    /// Get the number of rules loaded in the scanner.
+    pub fn rule_count(&self) -> usize {
+        self.scanner.rule_count()
+    }
+
     /// Analyze content for threats.
     pub fn analyze(&self, content: &str) -> Result<DetectionResult, PipelineError> {
+        let _span = debug_span!("analyze").entered();
         let scan_result = self.scanner.scan(content)?;
         let content_hash = compute_sha256(content);
 
@@ -162,7 +188,7 @@ impl DetectionResult {
         }
 
         let mut report = format!(
-            "Threat Level: {:?}\nMatches: {}\n\n",
+            "Threat Level: {}\nMatches: {}\n\n",
             self.threat_level(),
             self.match_count()
         );

@@ -9,6 +9,14 @@ use std::path::PathBuf;
 #[command(author, version, about, long_about = None)]
 #[command(about = "PipeGuard - Defending against curl|bash attacks through multi-layer shell interception")]
 pub struct Cli {
+    /// Logging verbosity level
+    #[arg(long, global = true, default_value = "warn")]
+    pub log_level: LogLevel,
+
+    /// Logging output format
+    #[arg(long, global = true, default_value = "pretty")]
+    pub log_format: crate::logging::LogFormat,
+
     #[command(subcommand)]
     pub command: Commands,
 }
@@ -140,6 +148,28 @@ pub enum UpdateAction {
     },
 }
 
+/// Logging verbosity level.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
+pub enum LogLevel {
+    Error,
+    Warn,
+    Info,
+    Debug,
+    Trace,
+}
+
+impl From<LogLevel> for tracing::Level {
+    fn from(level: LogLevel) -> Self {
+        match level {
+            LogLevel::Error => tracing::Level::ERROR,
+            LogLevel::Warn => tracing::Level::WARN,
+            LogLevel::Info => tracing::Level::INFO,
+            LogLevel::Debug => tracing::Level::DEBUG,
+            LogLevel::Trace => tracing::Level::TRACE,
+        }
+    }
+}
+
 #[derive(Debug, Clone, clap::ValueEnum)]
 pub enum OutputFormat {
     Text,
@@ -152,4 +182,44 @@ pub enum ShellType {
     Bash,
     Fish,
     All,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use clap::Parser;
+
+    #[test]
+    fn cli_default_log_level_is_warn() {
+        let cli = Cli::parse_from(["pipeguard", "rules", "list"]);
+        assert_eq!(cli.log_level, LogLevel::Warn);
+    }
+
+    #[test]
+    fn cli_accepts_log_level_debug() {
+        let cli = Cli::parse_from(["pipeguard", "--log-level", "debug", "rules", "list"]);
+        assert_eq!(cli.log_level, LogLevel::Debug);
+    }
+
+    #[test]
+    fn cli_accepts_log_format_json() {
+        let cli = Cli::parse_from(["pipeguard", "--log-format", "json", "rules", "list"]);
+        assert_eq!(cli.log_format, crate::logging::LogFormat::Json);
+    }
+
+    #[test]
+    fn cli_log_level_global_works_after_subcommand() {
+        // Global args can appear after the subcommand
+        let cli = Cli::parse_from(["pipeguard", "rules", "list", "--log-level", "trace"]);
+        assert_eq!(cli.log_level, LogLevel::Trace);
+    }
+
+    #[test]
+    fn log_level_converts_to_tracing_level() {
+        assert_eq!(tracing::Level::from(LogLevel::Error), tracing::Level::ERROR);
+        assert_eq!(tracing::Level::from(LogLevel::Warn), tracing::Level::WARN);
+        assert_eq!(tracing::Level::from(LogLevel::Info), tracing::Level::INFO);
+        assert_eq!(tracing::Level::from(LogLevel::Debug), tracing::Level::DEBUG);
+        assert_eq!(tracing::Level::from(LogLevel::Trace), tracing::Level::TRACE);
+    }
 }

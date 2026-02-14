@@ -1,28 +1,31 @@
 use clap::Parser;
 use colored::*;
-use pipeguard::cli::args::{Cli, Commands, ConfigAction, OutputFormat, RulesAction, ShellType, UpdateAction};
-use pipeguard::config::settings::Config;
-use pipeguard::detection::pipeline::{DetectionPipeline, PipelineConfig};
-use pipeguard::detection::threat::ThreatLevel;
-use pipeguard::update::{UpdateManager, UpdateConfig};
-use std::io::{self, Read};
-use std::path::Path;
+use pipeguard::cli::args::{Cli, Commands};
+use pipeguard::cli::commands::{cmd_scan, cmd_install, cmd_config, cmd_rules, cmd_update};
 use std::process::ExitCode;
 
 fn main() -> ExitCode {
     let cli = Cli::parse();
 
-    match run(cli) {
+    // Initialize structured logging before any command runs.
+    // log_level/log_format are consumed here; only command is forwarded.
+    if let Err(e) = pipeguard::logging::init(cli.log_level.into(), cli.log_format) {
+        eprintln!("{}: Failed to initialize logging: {}", "Error".red().bold(), e);
+        return ExitCode::FAILURE;
+    }
+
+    match run(cli.command) {
         Ok(exit_code) => exit_code,
         Err(e) => {
+            tracing::error!(error = %e, "Command failed");
             eprintln!("{}: {}", "Error".red().bold(), e);
             ExitCode::FAILURE
         }
     }
 }
 
-fn run(cli: Cli) -> anyhow::Result<ExitCode> {
-    match cli.command {
+fn run(command: Commands) -> anyhow::Result<ExitCode> {
+    match command {
         Commands::Scan { rules, file, format } => {
             cmd_scan(&rules, file.as_deref(), format)
         }
@@ -37,300 +40,6 @@ fn run(cli: Cli) -> anyhow::Result<ExitCode> {
         }
         Commands::Update { action } => {
             cmd_update(action)
-        }
-    }
-}
-
-fn cmd_scan(rules_path: &Path, file: Option<&Path>, format: OutputFormat) -> anyhow::Result<ExitCode> {
-    // Load rules
-    let pipeline = if rules_path.is_dir() {
-        DetectionPipeline::from_rules_dir(rules_path, PipelineConfig::default())?
-    } else {
-        let rules = std::fs::read_to_string(rules_path)?;
-        DetectionPipeline::new(&rules, PipelineConfig::default())?
-    };
-
-    // Read content
-    let content = match file {
-        Some(path) => std::fs::read_to_string(path)?,
-        None => {
-            let mut buf = String::new();
-            io::stdin().read_to_string(&mut buf)?;
-            buf
-        }
-    };
-
-    // Scan
-    let result = pipeline.analyze(&content)?;
-
-    // Output
-    match format {
-        OutputFormat::Text => {
-            if result.is_threat() {
-                let level_str = match result.threat_level() {
-                    ThreatLevel::None => "None".green(),
-                    ThreatLevel::Low => "Low".yellow(),
-                    ThreatLevel::Medium => "Medium".truecolor(255, 165, 0), // Orange
-                    ThreatLevel::High => "High".red().bold(),
-                };
-                println!("{} Threat Level: {}", "!".red().bold(), level_str);
-                println!();
-                println!("{}", result.report());
-                println!("Content Hash: {}", result.content_hash());
-            } else {
-                println!("{} No threats detected.", "✓".green());
-                println!("Content Hash: {}", result.content_hash());
-            }
-        }
-        OutputFormat::Json => {
-            let json = serde_json::json!({
-                "threat_level": format!("{:?}", result.threat_level()),
-                "is_threat": result.is_threat(),
-                "match_count": result.match_count(),
-                "content_hash": result.content_hash(),
-                "matches": result.report(),
-            });
-            println!("{}", serde_json::to_string_pretty(&json)?);
-        }
-    }
-
-    // Exit code based on threat level
-    Ok(if result.is_threat() {
-        ExitCode::FAILURE
-    } else {
-        ExitCode::SUCCESS
-    })
-}
-
-fn cmd_install(dry_run: bool, shell: ShellType) -> anyhow::Result<ExitCode> {
-    let shells_to_install = match shell {
-        ShellType::Zsh => vec!["zsh"],
-        ShellType::Bash => vec!["bash"],
-        ShellType::Fish => vec!["fish"],
-        ShellType::All => vec!["zsh", "bash"],  // Fish support TBD
-    };
-
-    // Get executable directory (for finding shell hooks)
-    let exe_dir = std::env::current_exe()?
-        .parent()
-        .ok_or_else(|| anyhow::anyhow!("Could not determine executable directory"))?
-        .to_path_buf();
-
-    let home = dirs::home_dir()
-        .ok_or_else(|| anyhow::anyhow!("Could not determine home directory"))?;
-
-    for s in &shells_to_install {
-        match *s {
-            "bash" => {
-                let rc_file = home.join(".bashrc");
-                let hook_path = exe_dir.join("../shell/pipeguard.bash");
-
-                install_shell_hook(&rc_file, &hook_path, "bash", dry_run)?;
-            }
-            "zsh" => {
-                let rc_file = home.join(".zshrc");
-                let hook_path = exe_dir.join("../shell/pipeguard.zsh");
-
-                install_shell_hook(&rc_file, &hook_path, "zsh", dry_run)?;
-            }
-            "fish" => {
-                println!("  {} Fish integration not yet implemented", "⚠️".yellow());
-            }
-            _ => {}
-        }
-    }
-
-    if !dry_run {
-        println!();
-        println!("{} Shell integration installed!", "✓".green());
-        println!("Restart your shell or run:");
-        if shells_to_install.contains(&"bash") {
-            println!("  source ~/.bashrc");
-        }
-        if shells_to_install.contains(&"zsh") {
-            println!("  source ~/.zshrc");
-        }
-    }
-
-    Ok(ExitCode::SUCCESS)
-}
-
-fn install_shell_hook(
-    rc_file: &Path,
-    hook_path: &Path,
-    shell_name: &str,
-    dry_run: bool,
-) -> anyhow::Result<()> {
-    let source_line = format!("\n# PipeGuard integration\n[ -f \"{}\" ] && source \"{}\"\n",
-        hook_path.display(), hook_path.display());
-
-    if dry_run {
-        println!("Would add to {}:", rc_file.display());
-        println!("{}", source_line.trim());
-        return Ok(());
-    }
-
-    // Check if already installed
-    if rc_file.exists() {
-        let content = std::fs::read_to_string(rc_file)?;
-        if content.contains("PipeGuard integration") {
-            println!("  {} {} integration already installed", "✓".green(), shell_name);
-            return Ok(());
-        }
-    }
-
-    // Create RC file if it doesn't exist
-    if !rc_file.exists() {
-        std::fs::File::create(rc_file)?;
-    }
-
-    // Append source line
-    use std::io::Write;
-    let mut file = std::fs::OpenOptions::new()
-        .append(true)
-        .open(rc_file)?;
-    file.write_all(source_line.as_bytes())?;
-
-    println!("  {} Installed {} integration", "✓".green(), shell_name);
-    Ok(())
-}
-
-fn cmd_config(action: ConfigAction) -> anyhow::Result<ExitCode> {
-    match action {
-        ConfigAction::Init { path } => {
-            let config_path = path.unwrap_or_else(Config::default_config_path);
-
-            // Create parent directories
-            if let Some(parent) = config_path.parent() {
-                std::fs::create_dir_all(parent)?;
-            }
-
-            let config = Config::default();
-            let toml = config.to_toml()?;
-            std::fs::write(&config_path, toml)?;
-
-            println!("Created config at: {}", config_path.display());
-            Ok(ExitCode::SUCCESS)
-        }
-        ConfigAction::Show => {
-            let config_path = Config::default_config_path();
-            if config_path.exists() {
-                let content = std::fs::read_to_string(&config_path)?;
-                println!("{}", content);
-            } else {
-                println!("No config file found at: {}", config_path.display());
-                println!("Run 'pipeguard config init' to create one.");
-            }
-            Ok(ExitCode::SUCCESS)
-        }
-    }
-}
-
-fn cmd_rules(action: RulesAction) -> anyhow::Result<ExitCode> {
-    match action {
-        RulesAction::List => {
-            // For now, show that no built-in rules are loaded
-            // In a full implementation, we'd list rules from a default location
-            println!("Built-in rules:");
-            println!("  No rules loaded. Use --rules to specify a rules file.");
-            Ok(ExitCode::SUCCESS)
-        }
-        RulesAction::Validate { path } => {
-            let rules = std::fs::read_to_string(&path)?;
-            match DetectionPipeline::new(&rules, PipelineConfig::default()) {
-                Ok(_) => {
-                    println!("{} Rules are valid.", "✓".green());
-                    Ok(ExitCode::SUCCESS)
-                }
-                Err(e) => {
-                    println!("{} Invalid rules: {}", "✗".red(), e);
-                    Ok(ExitCode::FAILURE)
-                }
-            }
-        }
-    }
-}
-
-fn cmd_update(action: UpdateAction) -> anyhow::Result<ExitCode> {
-    // Determine storage path
-    let storage_path = match &action {
-        UpdateAction::Check { storage, .. } => storage.clone(),
-        UpdateAction::Apply { storage, .. } => storage.clone(),
-        UpdateAction::Rollback { storage, .. } => storage.clone(),
-        UpdateAction::Status { storage } => storage.clone(),
-        UpdateAction::Cleanup { storage } => storage.clone(),
-    }.unwrap_or_else(|| {
-        dirs::home_dir()
-            .expect("Could not determine home directory")
-            .join(".pipeguard/rules")
-    });
-
-    let config = UpdateConfig::default();
-    let manager = UpdateManager::new(storage_path, config)?;
-
-    match action {
-        UpdateAction::Check { quiet, force, .. } => {
-            // TODO: Implement force logic with timestamp checking
-            let _ = force; // Silence unused warning for now
-
-            match manager.check_for_updates()? {
-                Some(version) => {
-                    if !quiet {
-                        println!("{} Update available: {}", "⚠️".yellow(), version);
-                        println!("Run 'pipeguard update apply' to install.");
-                    }
-                    Ok(ExitCode::from(1)) // Exit code 1 indicates update available
-                }
-                None => {
-                    if !quiet {
-                        println!("{} No updates available.", "✓".green());
-                    }
-                    Ok(ExitCode::SUCCESS)
-                }
-            }
-        }
-        UpdateAction::Apply { version, .. } => {
-            let version = version.unwrap_or_else(|| "latest".to_string());
-
-            if version == "latest" {
-                println!("Checking for latest version...");
-                // TODO: Implement actual download from GitHub
-                println!("{} GitHub integration not yet implemented.", "⚠️".yellow());
-                println!("Use --version to specify an existing version.");
-                return Ok(ExitCode::FAILURE);
-            }
-
-            println!("Applying update: {}", version);
-            manager.apply_update(&version)?;
-            println!("{} Successfully activated version {}", "✓".green(), version);
-            Ok(ExitCode::SUCCESS)
-        }
-        UpdateAction::Rollback { version, .. } => {
-            println!("Rolling back to version: {}", version);
-            manager.rollback(&version)?;
-            println!("{} Successfully rolled back to {}", "✓".green(), version);
-            Ok(ExitCode::SUCCESS)
-        }
-        UpdateAction::Status { .. } => {
-            match manager.current_version() {
-                Ok(version) => {
-                    println!("Current version: {}", version.green().bold());
-                    if manager.has_version(&version) {
-                        println!("Status: {}", "Active".green());
-                    }
-                }
-                Err(_) => {
-                    println!("Status: {}", "No active version".yellow());
-                    println!("Run 'pipeguard update apply' to activate a version.");
-                }
-            }
-            Ok(ExitCode::SUCCESS)
-        }
-        UpdateAction::Cleanup { .. } => {
-            println!("Cleaning up old versions...");
-            manager.cleanup()?;
-            println!("{} Cleanup complete.", "✓".green());
-            Ok(ExitCode::SUCCESS)
         }
     }
 }
