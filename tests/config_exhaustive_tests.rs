@@ -36,7 +36,6 @@ fn load_full_config() {
 
     let config = Config::from_file(&config_path).unwrap();
     assert!(config.detection.enable_yara);
-    assert!(config.detection.enable_sandbox);
     assert_eq!(config.detection.timeout_secs, 45);
 }
 
@@ -53,7 +52,7 @@ fn load_minimal_config() {
 
     let config = Config::from_file(&config_path).unwrap();
     assert_eq!(config.detection.timeout_secs, 30);
-    // Defaults should be used
+    // Defaults should be used for other fields
     assert!(config.detection.enable_yara);
 }
 
@@ -67,7 +66,6 @@ fn load_empty_config() {
     let config = Config::from_file(&config_path).unwrap();
     // All defaults
     assert!(config.detection.enable_yara);
-    assert!(config.detection.enable_sandbox);
     assert_eq!(config.detection.timeout_secs, 60);
 }
 
@@ -96,12 +94,6 @@ fn load_invalid_toml_fails() {
 fn default_detection_enable_yara() {
     let config = Config::default();
     assert!(config.detection.enable_yara);
-}
-
-#[test]
-fn default_detection_enable_sandbox() {
-    let config = Config::default();
-    assert!(config.detection.enable_sandbox);
 }
 
 #[test]
@@ -492,13 +484,11 @@ fn config_detection_disabled() {
     let toml = r#"
         [detection]
         enable_yara = false
-        enable_sandbox = false
     "#;
     fs::write(&config_path, toml).unwrap();
 
     let config = Config::from_file(&config_path).unwrap();
     assert!(!config.detection.enable_yara);
-    assert!(!config.detection.enable_sandbox);
 }
 
 #[test]

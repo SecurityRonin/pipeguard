@@ -324,7 +324,6 @@ low = "explode"
 fn detection_config_defaults() {
     let config = Config::default();
     assert!(config.detection.enable_yara);
-    assert!(config.detection.enable_sandbox);
     assert_eq!(config.detection.timeout_secs, 60);
 }
 
@@ -337,7 +336,6 @@ fn detection_config_custom() {
         r#"
 [detection]
 enable_yara = false
-enable_sandbox = false
 timeout_secs = 30
 "#,
     )
@@ -345,7 +343,6 @@ timeout_secs = 30
 
     let config = Config::from_file(&path).unwrap();
     assert!(!config.detection.enable_yara);
-    assert!(!config.detection.enable_sandbox);
     assert_eq!(config.detection.timeout_secs, 30);
 }
 

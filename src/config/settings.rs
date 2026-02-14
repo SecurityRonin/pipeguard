@@ -90,7 +90,6 @@ impl Config {
 #[serde(default)]
 pub struct DetectionConfig {
     pub enable_yara: bool,
-    pub enable_sandbox: bool,
     pub timeout_secs: u32,
 }
 
@@ -98,7 +97,6 @@ impl Default for DetectionConfig {
     fn default() -> Self {
         Self {
             enable_yara: true,
-            enable_sandbox: true,
             timeout_secs: 60,
         }
     }

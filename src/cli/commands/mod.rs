@@ -1,3 +1,8 @@
+//! CLI command implementations.
+//!
+//! Each submodule implements one top-level CLI command (scan, update,
+//! rules, config, install).
+
 pub mod config;
 pub mod install;
 pub mod rules;

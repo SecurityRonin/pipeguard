@@ -15,6 +15,8 @@ pub struct PipelineConfig {
     pub enable_yara: bool,
     /// Timeout for scanning in seconds
     pub timeout_secs: u32,
+    /// Whether to compute SHA-256 content hash (skip when allowlist is empty)
+    pub compute_content_hash: bool,
 }
 
 impl Default for PipelineConfig {
@@ -22,6 +24,7 @@ impl Default for PipelineConfig {
         Self {
             enable_yara: true,
             timeout_secs: 60,
+            compute_content_hash: true,
         }
     }
 }
@@ -43,6 +46,9 @@ pub enum PipelineError {
 
     #[error("No active version: {0}")]
     NoActiveVersion(#[from] anyhow::Error),
+
+    #[error("Scan timed out after {0} seconds")]
+    Timeout(u32),
 }
 
 /// Orchestrates multi-stage threat detection.
@@ -56,7 +62,7 @@ pub struct DetectionPipeline {
 impl DetectionPipeline {
     /// Create a new pipeline from YARA rule source.
     pub fn new(rules: &str, config: PipelineConfig) -> Result<Self, PipelineError> {
-        let scanner = YaraScanner::from_source(rules)?;
+        let scanner = YaraScanner::from_source_with_timeout(rules, config.timeout_secs)?;
         Ok(Self { scanner, config })
     }
 
@@ -148,7 +154,11 @@ impl DetectionPipeline {
     pub fn analyze(&self, content: &str) -> Result<DetectionResult, PipelineError> {
         let _span = debug_span!("analyze").entered();
         let scan_result = self.scanner.scan(content)?;
-        let content_hash = compute_sha256(content);
+        let content_hash = if self.config.compute_content_hash {
+            compute_sha256(content)
+        } else {
+            String::new()
+        };
 
         Ok(DetectionResult {
             matches: scan_result.matches().to_vec(),

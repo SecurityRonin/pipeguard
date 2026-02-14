@@ -1,3 +1,5 @@
+//! Install command: set up shell integration hooks for bash, zsh, and fish.
+
 use anyhow::Context;
 use colored::*;
 use std::path::Path;
@@ -6,6 +8,7 @@ use tracing::{debug, info};
 
 use crate::cli::args::ShellType;
 
+/// Execute the `install` command: add PipeGuard shell hooks to RC files.
 pub fn cmd_install(dry_run: bool, shell: ShellType) -> anyhow::Result<ExitCode> {
     let shells_to_install = match shell {
         ShellType::Zsh => vec!["zsh"],

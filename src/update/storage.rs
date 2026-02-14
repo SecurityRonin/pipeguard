@@ -1,21 +1,32 @@
-// src/update/storage.rs
+//! Versioned on-disk storage for YARA rule sets.
+//!
+//! Manages a directory structure of versioned rule snapshots with
+//! atomic activation via symlinks and cleanup of old versions.
+
 use anyhow::{Context, Result};
 use std::fs;
 use std::path::{Path, PathBuf};
 use tracing::debug;
 
+/// On-disk storage for versioned YARA rule sets with atomic activation.
 #[derive(Debug)]
 pub struct VersionedStorage {
     root: PathBuf,
 }
 
 impl VersionedStorage {
+    /// Create or open versioned storage at the given root directory.
     pub fn new(root: impl Into<PathBuf>) -> Result<Self> {
         let root = root.into();
         fs::create_dir_all(&root).context("Failed to create storage root directory")?;
         fs::create_dir_all(root.join("versions")).context("Failed to create versions directory")?;
 
         Ok(Self { root })
+    }
+
+    /// Get the storage root path
+    pub fn root(&self) -> &Path {
+        &self.root
     }
 
     /// Create a new version directory (alias for create_version_dir)

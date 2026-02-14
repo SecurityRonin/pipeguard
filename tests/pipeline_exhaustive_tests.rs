@@ -38,6 +38,7 @@ fn create_pipeline_with_custom_config() {
     let config = PipelineConfig {
         enable_yara: true,
         timeout_secs: 120,
+        ..PipelineConfig::default()
     };
     let rules = r#"
         rule test { meta: severity = 5 description = "test" condition: true }
@@ -471,4 +472,57 @@ fn analyze_with_many_rules() {
 
     assert!(result.is_threat());
     assert_eq!(result.match_count(), 2);
+}
+
+// =============================================================================
+// Lazy SHA-256 computation tests
+// =============================================================================
+
+#[test]
+fn analyze_without_allowlist_skips_hash() {
+    let rules = r#"
+        rule test { meta: severity = 5 description = "t" condition: true }
+    "#;
+    let config = PipelineConfig {
+        enable_yara: true,
+        timeout_secs: 60,
+        compute_content_hash: false,
+    };
+    let pipeline = DetectionPipeline::new(rules, config).unwrap();
+    let result = pipeline.analyze("test content").unwrap();
+
+    // When hash computation is disabled, content_hash should be empty
+    assert!(result.content_hash().is_empty());
+}
+
+#[test]
+fn analyze_with_allowlist_computes_hash() {
+    let rules = r#"
+        rule test { meta: severity = 5 description = "t" condition: true }
+    "#;
+    let config = PipelineConfig {
+        enable_yara: true,
+        timeout_secs: 60,
+        compute_content_hash: true,
+    };
+    let pipeline = DetectionPipeline::new(rules, config).unwrap();
+    let result = pipeline.analyze("test content").unwrap();
+
+    // When hash computation is enabled, content_hash should be valid SHA-256
+    assert_eq!(result.content_hash().len(), 64);
+    for c in result.content_hash().chars() {
+        assert!(c.is_ascii_hexdigit());
+    }
+}
+
+#[test]
+fn default_config_computes_hash() {
+    let rules = r#"
+        rule test { meta: severity = 5 description = "t" condition: true }
+    "#;
+    let pipeline = DetectionPipeline::new(rules, PipelineConfig::default()).unwrap();
+    let result = pipeline.analyze("test content").unwrap();
+
+    // Default behavior preserves backward compatibility: hash is computed
+    assert_eq!(result.content_hash().len(), 64);
 }

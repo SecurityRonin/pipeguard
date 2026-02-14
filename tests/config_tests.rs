@@ -27,7 +27,6 @@ fn config_loads_from_toml_file() {
     let config = Config::from_file(&config_path).unwrap();
 
     assert!(config.detection.enable_yara);
-    assert!(!config.detection.enable_sandbox);
     assert_eq!(config.detection.timeout_secs, 30);
 }
 
@@ -36,7 +35,6 @@ fn config_uses_defaults_when_missing() {
     let config = Config::default();
 
     assert!(config.detection.enable_yara);
-    assert!(config.detection.enable_sandbox);
     assert_eq!(config.detection.timeout_secs, 60);
     assert_eq!(config.response.low, ThreatResponse::Warn);
     assert_eq!(config.response.medium, ThreatResponse::Prompt);
@@ -141,7 +139,6 @@ fn config_merges_with_defaults() {
     assert_eq!(config.detection.timeout_secs, 120);
     // Default values preserved
     assert!(config.detection.enable_yara);
-    assert!(config.detection.enable_sandbox);
 }
 
 #[test]

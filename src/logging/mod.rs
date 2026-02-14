@@ -3,6 +3,8 @@
 //! User-facing output stays on stdout via `println!`. Operational telemetry
 //! (what the tool is doing, timing, diagnostics) goes to stderr via tracing.
 
+pub mod audit;
+
 use thiserror::Error;
 use tracing::Level;
 use tracing_subscriber::{fmt, prelude::*, EnvFilter};

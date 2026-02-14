@@ -1,3 +1,5 @@
+//! Scan command: analyze piped content or files for threats using YARA rules.
+
 use anyhow::Context;
 use colored::*;
 use std::io::{self, Read};
@@ -9,8 +11,9 @@ use tracing::{debug, info, info_span};
 use crate::cli::args::{resolve_rules_path, OutputFormat, EXIT_CLEAN, EXIT_ERROR, EXIT_THREAT};
 use crate::config::settings::Config;
 use crate::detection::pipeline::{DetectionPipeline, PipelineConfig};
-use crate::detection::threat::ThreatLevel;
+use crate::detection::threat::{ThreatLevel, ThreatResponse};
 
+/// Execute the `scan` command: load rules and analyze content for threats.
 pub fn cmd_scan(
     rules: Option<PathBuf>,
     file: Option<&std::path::Path>,
@@ -114,12 +117,24 @@ pub fn cmd_scan(
                     })
                     .collect();
 
+                let scan_duration_ms = start.elapsed().as_millis() as u64;
+                let rule_count = pipeline.rule_count();
+                let recommended_action = match config.response_for(result.threat_level()) {
+                    ThreatResponse::Allow => "allow",
+                    ThreatResponse::Warn => "warn",
+                    ThreatResponse::Prompt => "prompt",
+                    ThreatResponse::Block => "block",
+                };
+
                 let json = serde_json::json!({
                     "threat_level": result.threat_level().to_string(),
                     "is_threat": result.is_threat(),
                     "match_count": result.match_count(),
                     "content_hash": result.content_hash(),
                     "matches": matches,
+                    "scan_duration_ms": scan_duration_ms,
+                    "rule_count": rule_count,
+                    "recommended_action": recommended_action,
                 });
                 println!("{}", serde_json::to_string_pretty(&json)?);
             }

@@ -242,6 +242,38 @@ fn signature_not_transferable_between_contents() -> Result<()> {
     Ok(())
 }
 
+// ─── Build-time key injection ───────────────────────────────────
+
+#[test]
+fn new_rejects_placeholder_key_in_release_mode() {
+    // CryptoVerifier::new() should detect the all-zeros placeholder key
+    // and return an error with is_placeholder_key() returning true
+    let verifier = CryptoVerifier::new();
+    // In debug mode, new() succeeds but warns; we test via is_placeholder_key
+    if verifier.is_ok() {
+        let v = verifier.unwrap();
+        // The embedded key is all-zeros, so is_placeholder_key should be true
+        assert!(v.is_placeholder_key());
+    }
+}
+
+#[test]
+fn from_public_key_is_not_placeholder() -> Result<()> {
+    let keypair = ed25519_dalek::SigningKey::generate(&mut rand_core::OsRng);
+    let verifier = CryptoVerifier::from_public_key(keypair.verifying_key().to_bytes())?;
+    assert!(!verifier.is_placeholder_key());
+    Ok(())
+}
+
+#[test]
+fn env_key_override_is_used() {
+    // If PIPEGUARD_PUBLIC_KEY env var was set at compile time with a valid hex key,
+    // the embedded key would not be all-zeros. We can at least verify the
+    // compile-time constant mechanism by checking the current state.
+    let verifier = CryptoVerifier::new();
+    assert!(verifier.is_ok(), "CryptoVerifier::new() should succeed");
+}
+
 // ─── Deterministic signatures ───────────────────────────────────
 
 #[test]

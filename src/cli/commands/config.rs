@@ -1,3 +1,5 @@
+//! Config command: initialize and display PipeGuard configuration.
+
 use anyhow::Context;
 use std::process::ExitCode;
 use tracing::debug;
@@ -5,6 +7,7 @@ use tracing::debug;
 use crate::cli::args::ConfigAction;
 use crate::config::settings::Config;
 
+/// Execute the `config` subcommand (init, show).
 pub fn cmd_config(action: ConfigAction) -> anyhow::Result<ExitCode> {
     match action {
         ConfigAction::Init { path } => {

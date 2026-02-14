@@ -101,7 +101,11 @@ pub enum ConfigAction {
 #[derive(Subcommand, Debug)]
 pub enum RulesAction {
     /// List available rules
-    List,
+    List {
+        /// Path to YARA rules file or directory [default: auto-detected]
+        #[arg(short, long)]
+        rules: Option<PathBuf>,
+    },
 
     /// Validate rules syntax
     Validate {
@@ -228,10 +232,11 @@ pub enum CompletionShell {
 }
 
 /// Scan exit codes with distinct semantics.
-/// 0 = clean, 1 = threat detected, 2 = error.
+/// 0 = clean, 1 = threat detected, 2 = error, 3 = update available.
 pub const EXIT_CLEAN: u8 = 0;
 pub const EXIT_THREAT: u8 = 1;
 pub const EXIT_ERROR: u8 = 2;
+pub const EXIT_UPDATE_AVAILABLE: u8 = 3;
 
 /// Well-known rules paths searched when --rules is omitted.
 pub const DEFAULT_RULES_SEARCH_PATHS: &[&str] = &[
@@ -372,7 +377,10 @@ mod tests {
         assert_eq!(EXIT_CLEAN, 0);
         assert_eq!(EXIT_THREAT, 1);
         assert_eq!(EXIT_ERROR, 2);
+        assert_eq!(EXIT_UPDATE_AVAILABLE, 3);
         assert_ne!(EXIT_THREAT, EXIT_ERROR);
+        assert_ne!(EXIT_THREAT, EXIT_UPDATE_AVAILABLE);
+        assert_ne!(EXIT_ERROR, EXIT_UPDATE_AVAILABLE);
     }
 
     #[test]

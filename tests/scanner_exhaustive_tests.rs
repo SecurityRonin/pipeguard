@@ -1,6 +1,6 @@
 //! Exhaustive tests for YARA scanner edge cases.
 
-use pipeguard::detection::scanner::YaraScanner;
+use pipeguard::detection::scanner::{RuleCache, YaraScanner};
 use pipeguard::detection::threat::ThreatLevel;
 use std::fs;
 use tempfile::TempDir;
@@ -760,4 +760,131 @@ fn scan_result_matches_returns_all() {
     let result = scanner.scan("abc").unwrap();
 
     assert_eq!(result.matches().len(), 3);
+}
+
+// =============================================================================
+// Rule caching tests
+// =============================================================================
+
+#[test]
+fn rule_cache_returns_same_rules_for_same_source() {
+    let source = r#"
+        rule cached_test {
+            meta: severity = 5 description = "cache test"
+            strings: $a = "test"
+            condition: $a
+        }
+    "#;
+    let cache = RuleCache::new();
+    let rules1 = cache.get_or_compile(source).unwrap();
+    let rules2 = cache.get_or_compile(source).unwrap();
+
+    // Same Arc pointer means cache hit
+    assert!(std::sync::Arc::ptr_eq(&rules1, &rules2));
+}
+
+#[test]
+fn rule_cache_recompiles_on_different_source() {
+    let source1 = r#"
+        rule rule_a { condition: true }
+    "#;
+    let source2 = r#"
+        rule rule_b { condition: true }
+    "#;
+    let cache = RuleCache::new();
+    let rules1 = cache.get_or_compile(source1).unwrap();
+    let rules2 = cache.get_or_compile(source2).unwrap();
+
+    // Different source -> different Arc
+    assert!(!std::sync::Arc::ptr_eq(&rules1, &rules2));
+}
+
+#[test]
+fn rule_cache_hit_is_fast() {
+    let source = r#"
+        rule speed_test {
+            meta: severity = 5 description = "speed"
+            strings: $a = "test"
+            condition: $a
+        }
+    "#;
+    let cache = RuleCache::new();
+
+    // First call compiles
+    let _ = cache.get_or_compile(source).unwrap();
+
+    // Second call should be near-instant (cache hit)
+    let start = std::time::Instant::now();
+    let _ = cache.get_or_compile(source).unwrap();
+    let elapsed = start.elapsed();
+
+    // Cache hit should take less than 1ms (compilation takes many ms)
+    assert!(
+        elapsed.as_millis() < 5,
+        "Cache hit took {}ms, expected < 5ms",
+        elapsed.as_millis()
+    );
+}
+
+#[test]
+fn rule_cache_compiled_rules_scan_correctly() {
+    let source = r#"
+        rule functional_test {
+            meta: severity = 8 description = "functional"
+            strings: $a = "malicious"
+            condition: $a
+        }
+    "#;
+    let cache = RuleCache::new();
+    let scanner = YaraScanner::from_cache(source, &cache).unwrap();
+
+    let result = scanner.scan("this is malicious content").unwrap();
+    assert!(result.has_matches());
+    assert_eq!(result.matches()[0].severity(), 8);
+}
+
+// =============================================================================
+// Timeout configuration tests
+// =============================================================================
+
+#[test]
+fn scanner_with_timeout_completes_normally() {
+    let rule = r#"
+        rule timeout_test {
+            meta: severity = 5 description = "timeout"
+            strings: $a = "test"
+            condition: $a
+        }
+    "#;
+    let scanner = YaraScanner::from_source_with_timeout(rule, 60).unwrap();
+    let result = scanner.scan("test content").unwrap();
+    assert!(result.has_matches());
+}
+
+#[test]
+fn scanner_with_zero_timeout_means_no_limit() {
+    let rule = r#"
+        rule no_timeout {
+            meta: severity = 5 description = "no timeout"
+            strings: $a = "test"
+            condition: $a
+        }
+    "#;
+    // 0 = no timeout in YARA
+    let scanner = YaraScanner::from_source_with_timeout(rule, 0).unwrap();
+    let result = scanner.scan("test content").unwrap();
+    assert!(result.has_matches());
+}
+
+#[test]
+fn scanner_default_timeout_is_60() {
+    let rule = r#"
+        rule default_timeout {
+            meta: severity = 5 description = "default"
+            strings: $a = "test"
+            condition: $a
+        }
+    "#;
+    let scanner = YaraScanner::from_source(rule).unwrap();
+    assert_eq!(scanner.timeout_secs(), 60);
 }

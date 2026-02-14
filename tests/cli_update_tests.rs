@@ -67,8 +67,14 @@ fn test_update_check_quiet_mode() {
     cmd.arg("update").arg("check").arg("--quiet");
 
     // Should not crash with quiet flag
+    // Exit codes: 0 = no updates/recently checked, 2 = error (network), 3 = update available
     let output = cmd.output().unwrap();
-    assert!(output.status.success() || output.status.code() == Some(1));
+    let code = output.status.code().unwrap_or(-1);
+    assert!(
+        code == 0 || code == 2 || code == 3,
+        "Unexpected exit code: {}",
+        code
+    );
 }
 
 #[test]
@@ -77,8 +83,14 @@ fn test_update_check_force_flag() {
     cmd.arg("update").arg("check").arg("--force");
 
     // Should not crash with force flag
+    // Exit codes: 0 = no updates, 2 = error (network), 3 = update available
     let output = cmd.output().unwrap();
-    assert!(output.status.success() || output.status.code() == Some(1));
+    let code = output.status.code().unwrap_or(-1);
+    assert!(
+        code == 0 || code == 2 || code == 3,
+        "Unexpected exit code: {}",
+        code
+    );
 }
 
 #[test]

