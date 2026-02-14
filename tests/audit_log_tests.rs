@@ -174,6 +174,31 @@ fn audit_log_total_disk_bounded() {
     );
 }
 
+// ─── ISO 8601 / RFC 3339 timestamps ─────────────────────────────
+
+#[test]
+fn audit_log_timestamp_is_rfc3339() {
+    let temp = TempDir::new().unwrap();
+    let path = temp.path().join("audit.log");
+    let log = AuditLog::open(&path, AuditConfig::default()).unwrap();
+
+    log.record("scan", "timestamp test").unwrap();
+
+    let content = fs::read_to_string(&path).unwrap();
+    let parsed: serde_json::Value = serde_json::from_str(content.trim()).unwrap();
+    let ts = parsed["timestamp"]
+        .as_str()
+        .expect("timestamp should be a string");
+
+    // RFC 3339 pattern: YYYY-MM-DDTHH:MM:SSZ
+    let rfc3339_re = regex::Regex::new(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$").unwrap();
+    assert!(
+        rfc3339_re.is_match(ts),
+        "Timestamp '{}' should match RFC 3339 format YYYY-MM-DDTHH:MM:SSZ",
+        ts
+    );
+}
+
 // ─── Config defaults ────────────────────────────────────────────
 
 #[test]

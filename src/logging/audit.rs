@@ -122,13 +122,68 @@ impl AuditLog {
     }
 }
 
-/// ISO 8601 timestamp without pulling in the chrono crate.
+/// ISO 8601 / RFC 3339 timestamp without pulling in the chrono crate.
+///
+/// Formats as `YYYY-MM-DDTHH:MM:SSZ` using manual arithmetic from
+/// the Unix epoch. Handles leap years correctly.
 fn chrono_iso8601_now() -> String {
     use std::time::SystemTime;
-    let now = SystemTime::now()
+    let secs = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
-        .unwrap_or_default();
-    // Format as seconds since epoch (good enough for audit logs)
-    // A full ISO 8601 format would require chrono, but we removed that dep.
-    format!("{}s", now.as_secs())
+        .unwrap_or_default()
+        .as_secs();
+
+    let secs_per_day: u64 = 86400;
+    let mut days = secs / secs_per_day;
+    let day_secs = secs % secs_per_day;
+
+    let hours = day_secs / 3600;
+    let minutes = (day_secs % 3600) / 60;
+    let seconds = day_secs % 60;
+
+    // Calculate year/month/day from days since 1970-01-01
+    let mut year: u64 = 1970;
+    loop {
+        let days_in_year = if is_leap_year(year) { 366 } else { 365 };
+        if days < days_in_year {
+            break;
+        }
+        days -= days_in_year;
+        year += 1;
+    }
+
+    let leap = is_leap_year(year);
+    let month_days: [u64; 12] = [
+        31,
+        if leap { 29 } else { 28 },
+        31,
+        30,
+        31,
+        30,
+        31,
+        31,
+        30,
+        31,
+        30,
+        31,
+    ];
+
+    let mut month: u64 = 1;
+    for &md in &month_days {
+        if days < md {
+            break;
+        }
+        days -= md;
+        month += 1;
+    }
+    let day = days + 1;
+
+    format!(
+        "{:04}-{:02}-{:02}T{:02}:{:02}:{:02}Z",
+        year, month, day, hours, minutes, seconds
+    )
+}
+
+fn is_leap_year(y: u64) -> bool {
+    (y % 4 == 0 && y % 100 != 0) || (y % 400 == 0)
 }
