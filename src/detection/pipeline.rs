@@ -120,11 +120,16 @@ impl DetectionPipeline {
         storage_root: Option<PathBuf>,
         config: PipelineConfig,
     ) -> Result<Self, PipelineError> {
-        let storage_path = storage_root.unwrap_or_else(|| {
-            dirs::home_dir()
-                .expect("Could not determine home directory")
-                .join(".pipeguard/rules")
-        });
+        let storage_path = match storage_root {
+            Some(p) => p,
+            None => dirs::home_dir()
+                .ok_or_else(|| {
+                    PipelineError::NoActiveVersion(anyhow::anyhow!(
+                        "Could not determine home directory"
+                    ))
+                })?
+                .join(".pipeguard/rules"),
+        };
 
         let storage = VersionedStorage::new(storage_path)?;
 

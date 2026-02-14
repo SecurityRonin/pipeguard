@@ -18,11 +18,12 @@ pub fn cmd_update(action: UpdateAction) -> anyhow::Result<ExitCode> {
         UpdateAction::Status { storage } => storage.clone(),
         UpdateAction::Cleanup { storage } => storage.clone(),
     }
+    .map(Ok)
     .unwrap_or_else(|| {
         dirs::home_dir()
-            .expect("Could not determine home directory")
-            .join(".pipeguard/rules")
-    });
+            .ok_or_else(|| anyhow::anyhow!("Could not determine home directory"))
+            .map(|h| h.join(".pipeguard/rules"))
+    })?;
 
     let config = UpdateConfig::default();
     let manager =
