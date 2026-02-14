@@ -6,23 +6,26 @@ use std::process::ExitCode;
 use tracing::info;
 
 use crate::cli::args::{resolve_rules_path, RulesAction};
+use crate::config::settings::Config;
 use crate::detection::pipeline::{DetectionPipeline, PipelineConfig};
 
 /// Execute the `rules` subcommand (list, validate, info).
 pub fn cmd_rules(action: RulesAction) -> anyhow::Result<ExitCode> {
     match action {
         RulesAction::List { rules } => {
-            let rules_path = match resolve_rules_path(rules) {
-                Some(p) => p,
-                None => {
-                    println!("No rules found.");
-                    println!(
+            let config = Config::from_file(&Config::default_config_path()).unwrap_or_default();
+            let rules_path =
+                match resolve_rules_path(rules, config.rules.custom_rules_path.as_deref()) {
+                    Some(p) => p,
+                    None => {
+                        println!("No rules found.");
+                        println!(
                         "Use {} to specify a rules file or install rules to a default location.",
                         "--rules".bold()
                     );
-                    return Ok(ExitCode::SUCCESS);
-                }
-            };
+                        return Ok(ExitCode::SUCCESS);
+                    }
+                };
 
             let content = if rules_path.is_dir() {
                 let mut combined = String::new();

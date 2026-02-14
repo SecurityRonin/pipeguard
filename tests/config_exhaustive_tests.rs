@@ -528,3 +528,55 @@ fn config_all_responses_block() {
     assert_eq!(config.response.medium, ThreatResponse::Block);
     assert_eq!(config.response.high, ThreatResponse::Block);
 }
+
+// =============================================================================
+// custom_rules_path wiring tests
+// =============================================================================
+
+#[test]
+fn custom_rules_path_loaded_from_config() {
+    let temp_dir = TempDir::new().unwrap();
+    let config_path = temp_dir.path().join("config.toml");
+
+    let toml = r#"
+        [rules]
+        custom_rules_path = "/custom/rules/dir"
+    "#;
+    fs::write(&config_path, toml).unwrap();
+
+    let config = Config::from_file(&config_path).unwrap();
+    assert_eq!(
+        config.rules.custom_rules_path,
+        Some("/custom/rules/dir".to_string())
+    );
+}
+
+#[test]
+fn resolve_rules_path_uses_custom_rules_path_as_fallback() {
+    use pipeguard::cli::args::resolve_rules_path;
+
+    // Create a temp dir with a dummy rules file so the path "exists"
+    let temp_dir = TempDir::new().unwrap();
+    let rules_dir = temp_dir.path().join("my_rules");
+    fs::create_dir_all(&rules_dir).unwrap();
+    fs::write(
+        rules_dir.join("custom.yar"),
+        "rule dummy { condition: false }",
+    )
+    .unwrap();
+
+    // When no CLI --rules provided, should use custom_rules_path from config
+    let result = resolve_rules_path(None, Some(rules_dir.to_str().unwrap()));
+    assert_eq!(result, Some(rules_dir));
+}
+
+#[test]
+fn resolve_rules_path_cli_overrides_custom_rules_path() {
+    use pipeguard::cli::args::resolve_rules_path;
+    use std::path::PathBuf;
+
+    let cli_path = PathBuf::from("/explicit/cli/rules");
+    // CLI flag should take priority over custom_rules_path from config
+    let result = resolve_rules_path(Some(cli_path.clone()), Some("/custom/config/rules"));
+    assert_eq!(result, Some(cli_path));
+}

@@ -20,8 +20,11 @@ pub fn cmd_scan(
     format: OutputFormat,
     quiet: bool,
 ) -> anyhow::Result<ExitCode> {
-    // Resolve rules path: use provided, or search defaults
-    let rules_path = match resolve_rules_path(rules) {
+    // Load config early so custom_rules_path can influence rules resolution
+    let config = Config::from_file(&Config::default_config_path()).unwrap_or_default();
+
+    // Resolve rules path: CLI flag > config custom_rules_path > built-in defaults
+    let rules_path = match resolve_rules_path(rules, config.rules.custom_rules_path.as_deref()) {
         Some(p) => p,
         None => {
             if !quiet {
@@ -76,7 +79,6 @@ pub fn cmd_scan(
     );
 
     // Check allowlist
-    let config = Config::from_file(&Config::default_config_path()).unwrap_or_default();
     if config.is_allowlisted_hash(result.content_hash()) {
         if !quiet {
             println!("{} Allowlisted (hash match)", "✓".green());

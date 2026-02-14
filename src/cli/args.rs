@@ -248,12 +248,25 @@ pub const DEFAULT_RULES_SEARCH_PATHS: &[&str] = &[
     "~/.pipeguard/rules",
 ];
 
-/// Resolve the rules path: use provided, or search defaults.
-pub fn resolve_rules_path(provided: Option<PathBuf>) -> Option<PathBuf> {
+/// Resolve the rules path: CLI flag > config custom_rules_path > built-in defaults.
+pub fn resolve_rules_path(
+    provided: Option<PathBuf>,
+    config_custom: Option<&str>,
+) -> Option<PathBuf> {
+    // 1. CLI --rules flag takes top priority
     if let Some(path) = provided {
         return Some(path);
     }
 
+    // 2. Config custom_rules_path is checked next
+    if let Some(custom) = config_custom {
+        let custom_path = PathBuf::from(custom);
+        if custom_path.exists() {
+            return Some(custom_path);
+        }
+    }
+
+    // 3. Built-in default search paths
     for candidate in DEFAULT_RULES_SEARCH_PATHS {
         let expanded = if candidate.starts_with('~') {
             if let Some(home) = dirs::home_dir() {
@@ -385,14 +398,14 @@ mod tests {
 
     #[test]
     fn resolve_rules_path_with_provided() {
-        let result = resolve_rules_path(Some(PathBuf::from("/tmp/rules")));
+        let result = resolve_rules_path(Some(PathBuf::from("/tmp/rules")), None);
         assert_eq!(result, Some(PathBuf::from("/tmp/rules")));
     }
 
     #[test]
     fn resolve_rules_path_returns_none_when_no_defaults_exist() {
         // With no provided path and no defaults installed, should return None
-        let result = resolve_rules_path(None);
+        let result = resolve_rules_path(None, None);
         // Can't guarantee None on a machine with pipeguard installed,
         // but the function should not panic
         let _ = result;
