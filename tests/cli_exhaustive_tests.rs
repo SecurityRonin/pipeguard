@@ -658,7 +658,17 @@ fn version_flag() {
         .arg("--version")
         .assert()
         .success()
-        .stdout(predicate::str::contains("pipeguard"));
+        .stdout(predicate::str::contains("pipeguard"))
+        .stdout(predicate::str::contains(env!("CARGO_PKG_VERSION")));
+}
+
+#[test]
+fn version_short_flag() {
+    pipeguard_cmd()
+        .arg("-V")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(env!("CARGO_PKG_VERSION")));
 }
 
 #[test]
