@@ -83,6 +83,12 @@ Three severity levels:
 - One-command rollback if issues arise
 - Safe defaults (notify, don't auto-apply)
 
+**Structured Logging**
+- `--log-level` flag (error/warn/info/debug/trace, default: warn)
+- `--log-format` flag (pretty/json, default: pretty)
+- Operational telemetry on stderr; scan results stay on stdout
+- `RUST_LOG` env var override for fine-grained control
+
 **Zero Configuration**
 - Install once, stays active
 - Works with existing shells (bash/zsh)
@@ -165,6 +171,31 @@ brew untap securityronin/tap
 
 ---
 
+## Logging & Diagnostics
+
+PipeGuard uses structured logging via `tracing`. Scan results go to stdout; diagnostic telemetry goes to stderr.
+
+```bash
+# Default — no diagnostic output (warn level)
+pipeguard scan --rules rules/core.yar < script.sh
+
+# Debug logging on stderr (useful for troubleshooting)
+pipeguard --log-level debug scan --rules rules/core.yar < script.sh
+
+# JSON-structured logs on stderr (for log aggregation)
+pipeguard --log-format json --log-level info scan --rules rules/core.yar < script.sh
+
+# Fine-grained control via RUST_LOG (overrides --log-level)
+RUST_LOG=pipeguard=trace pipeguard scan --rules rules/core.yar < script.sh
+```
+
+Piping scan results still works cleanly with any log level:
+```bash
+pipeguard --log-level debug scan --rules rules/ -F json < script.sh 2>/dev/null | jq .
+```
+
+---
+
 ## Configuration
 
 Edit `~/.config/pipeguard/config.toml`:
@@ -218,8 +249,9 @@ pipeguard update cleanup
 - ✅ Four-layer shell interception (bash/zsh)
 - ✅ Smart content filtering (binary vs script detection)
 - ✅ Automatic updates (Ed25519 verified, rollback support)
+- ✅ Structured logging (--log-level, --log-format, stderr telemetry)
 - ✅ Installer script
-- ✅ Comprehensive test suite (32 tests passing)
+- ✅ Comprehensive test suite (25+ tests passing)
 - 🔄 Real-world validation
 - 🔄 Performance benchmarks
 
