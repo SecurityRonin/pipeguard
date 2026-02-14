@@ -116,6 +116,7 @@ $(PKG_SIGNED): $(BINARY)
 	# Copy files to payload
 	@cp $(BINARY) $(PAYLOAD_DIR)$(INSTALL_LOCATION)/bin/
 	@cp -r $(ROOT_DIR)/rules/* $(PAYLOAD_DIR)$(INSTALL_LOCATION)/share/pipeguard/rules/ 2>/dev/null || true
+	@cp $(ROOT_DIR)/shell/*.sh $(PAYLOAD_DIR)$(INSTALL_LOCATION)/share/pipeguard/shell/ 2>/dev/null || true
 	@cp $(ROOT_DIR)/shell/*.zsh $(PAYLOAD_DIR)$(INSTALL_LOCATION)/share/pipeguard/shell/ 2>/dev/null || true
 	@cp $(ROOT_DIR)/shell/*.bash $(PAYLOAD_DIR)$(INSTALL_LOCATION)/share/pipeguard/shell/ 2>/dev/null || true
 

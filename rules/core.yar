@@ -45,22 +45,53 @@ rule large_base64_blob {
 // Category 2: Staged Downloads (Severity: 7)
 // =============================================================================
 
-rule staged_download_curl {
+rule staged_download_pipe {
     meta:
         severity = 7
-        description = "Script downloads and executes additional payloads"
+        description = "Script downloads and pipes to shell interpreter"
         category = "staged"
     strings:
-        $curl1 = "curl" nocase
-        $curl2 = "wget" nocase
-        $curl3 = "fetch" nocase
+        $dl1 = "curl" nocase
+        $dl2 = "wget" nocase
+        $dl3 = "fetch" nocase
+        $dl4 = "aria2c" nocase
+        $dl5 = "axel" nocase
+        $dl6 = "httpie" nocase
         $pipe1 = "| bash"
         $pipe2 = "| sh"
         $pipe3 = "| zsh"
         $pipe4 = "| python"
         $pipe5 = "| perl"
     condition:
-        any of ($curl*) and any of ($pipe*)
+        any of ($dl*) and any of ($pipe*)
+}
+
+rule staged_download_exec {
+    meta:
+        severity = 7
+        description = "Script downloads file then executes it"
+        category = "staged"
+    strings:
+        $dl1 = "curl" nocase
+        $dl2 = "wget" nocase
+        $dl3 = "fetch" nocase
+        $dl4 = "aria2c" nocase
+        $dl5 = "axel" nocase
+        $dl6 = "httpie" nocase
+        $dl7 = "scp" nocase
+        $dl8 = "rsync" nocase
+        $exec1 = "&& bash"
+        $exec2 = "&& sh"
+        $exec3 = "&& zsh"
+        $exec4 = "; bash"
+        $exec5 = "; sh"
+        $exec6 = "; zsh"
+        $exec7 = "&& chmod +x"
+        $exec8 = "; chmod +x"
+        $exec9 = "&& ./"
+        $exec10 = "; ./"
+    condition:
+        any of ($dl*) and any of ($exec*)
 }
 
 rule multi_stage_download {
@@ -69,7 +100,7 @@ rule multi_stage_download {
         description = "Multiple download commands suggesting staged attack"
         category = "staged"
     strings:
-        $dl = /curl|wget|fetch/ nocase
+        $dl = /curl|wget|fetch|aria2c|axel|httpie|scp|rsync/ nocase
     condition:
         #dl >= 3
 }
@@ -352,7 +383,7 @@ rule env_harvesting {
         $env3 = "$USER"
         $env4 = "$PATH"
         $env5 = "env |"
-        $send = /curl|wget|nc/
+        $send = /curl|wget|nc|aria2c|axel|httpie/
     condition:
         2 of ($env*) and $send
 }
@@ -434,9 +465,11 @@ rule python_subprocess_shell_injection {
         $shell = "shell=True"
         $curl = "curl" nocase
         $wget = "wget" nocase
+        $aria2c = "aria2c" nocase
+        $axel = "axel" nocase
         $bash = /bash|sh/
     condition:
-        ($subprocess and $shell) or ($system and ($curl or $wget or $bash))
+        ($subprocess and $shell) or ($system and ($curl or $wget or $aria2c or $axel or $bash))
 }
 
 rule python_exec_base64 {
@@ -541,8 +574,10 @@ rule python_nohup_background {
         $devnull = "/dev/null"
         $system = "os.system"
         $curl = "curl" nocase
+        $wget = "wget" nocase
+        $aria2c = "aria2c" nocase
     condition:
-        $nohup and $background and ($devnull or $system) and $curl
+        $nohup and $background and ($devnull or $system) and ($curl or $wget or $aria2c)
 }
 
 // =============================================================================
@@ -560,10 +595,12 @@ rule npm_malicious_install_script {
         $preinstall = "preinstall" nocase
         $curl = "curl" nocase
         $wget = "wget" nocase
+        $aria2c = "aria2c" nocase
+        $axel = "axel" nocase
         $bash = /\|\s*bash/
         $sh = /\|\s*sh/
     condition:
-        $scripts and ($postinstall or $preinstall) and ($curl or $wget) and ($bash or $sh)
+        $scripts and ($postinstall or $preinstall) and ($curl or $wget or $aria2c or $axel) and ($bash or $sh)
 }
 
 rule npm_node_exec_injection {
@@ -576,9 +613,11 @@ rule npm_node_exec_injection {
         $child_process = "child_process"
         $exec = ".exec"
         $curl = "curl" nocase
+        $wget = "wget" nocase
+        $aria2c = "aria2c" nocase
         $eval = "eval"
     condition:
-        $node_e and ($child_process and $exec) or ($node_e and $curl and $eval)
+        $node_e and ($child_process and $exec) or ($node_e and ($curl or $wget or $aria2c) and $eval)
 }
 
 // =============================================================================
@@ -675,7 +714,9 @@ rule python_shell_command_substitution {
         $backtick = "`"
         $dollar_paren = "$("
         $curl = "curl" nocase
+        $wget = "wget" nocase
+        $aria2c = "aria2c" nocase
         $eval = "eval"
     condition:
-        ($os_system or $subprocess) and ($backtick or $dollar_paren) and ($curl or $eval)
+        ($os_system or $subprocess) and ($backtick or $dollar_paren) and ($curl or $wget or $aria2c or $eval)
 }

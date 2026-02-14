@@ -11,7 +11,7 @@ elif [[ -d "/usr/local/opt/yara/lib" ]]; then
     export DYLD_LIBRARY_PATH="/usr/local/opt/yara/lib:${DYLD_LIBRARY_PATH:-}"
 fi
 
-# Load shell-specific integration
+# Load shell integration (shell-specific scripts source pipeguard-common.sh)
 PIPEGUARD_SHARE="${HOME}/.local/share/pipeguard"
 
 if [[ -n "${ZSH_VERSION:-}" ]]; then

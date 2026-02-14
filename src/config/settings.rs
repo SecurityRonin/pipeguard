@@ -9,11 +9,17 @@ use thiserror::Error;
 /// Configuration errors.
 #[derive(Error, Debug)]
 pub enum ConfigError {
-    #[error("Failed to read config file: {0}")]
-    IoError(#[from] std::io::Error),
+    #[error("Failed to read config file '{path}': {source}")]
+    IoError {
+        path: PathBuf,
+        source: std::io::Error,
+    },
 
-    #[error("Failed to parse config: {0}")]
-    ParseError(#[from] toml::de::Error),
+    #[error("Failed to parse config '{path}': {source}")]
+    ParseError {
+        path: PathBuf,
+        source: toml::de::Error,
+    },
 
     #[error("Failed to serialize config: {0}")]
     SerializeError(#[from] toml::ser::Error),
@@ -45,8 +51,14 @@ impl Default for Config {
 impl Config {
     /// Load configuration from a TOML file.
     pub fn from_file(path: &Path) -> Result<Self, ConfigError> {
-        let content = std::fs::read_to_string(path)?;
-        let config: Config = toml::from_str(&content)?;
+        let content = std::fs::read_to_string(path).map_err(|source| ConfigError::IoError {
+            path: path.to_path_buf(),
+            source,
+        })?;
+        let config: Config = toml::from_str(&content).map_err(|source| ConfigError::ParseError {
+            path: path.to_path_buf(),
+            source,
+        })?;
         Ok(config)
     }
 
@@ -171,6 +183,7 @@ impl Default for UpdatesConfig {
 }
 
 /// Helper for response override parsing.
+#[derive(Debug)]
 pub struct ResponseOverride;
 
 impl ResponseOverride {

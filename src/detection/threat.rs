@@ -16,6 +16,17 @@ pub enum ThreatLevel {
     High,
 }
 
+impl std::fmt::Display for ThreatLevel {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ThreatLevel::None => write!(f, "None"),
+            ThreatLevel::Low => write!(f, "Low"),
+            ThreatLevel::Medium => write!(f, "Medium"),
+            ThreatLevel::High => write!(f, "High"),
+        }
+    }
+}
+
 impl ThreatLevel {
     /// Convert a numeric severity score (0-10) to a threat level.
     pub fn from_score(score: u8) -> Self {

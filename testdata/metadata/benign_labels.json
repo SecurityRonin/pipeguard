@@ -1,0 +1,258 @@
+{
+  "version": "1.0",
+  "generated": "2026-01-06",
+  "total_samples": 42,
+  "categories": {
+    "development": {
+      "count": 10,
+      "description": "Software development workflows"
+    },
+    "sysadmin": {
+      "count": 8,
+      "description": "System administration tasks"
+    },
+    "network": {
+      "count": 6,
+      "description": "Legitimate network operations"
+    },
+    "data_processing": {
+      "count": 5,
+      "description": "Data transformation and analysis"
+    },
+    "file_ops": {
+      "count": 6,
+      "description": "File management operations"
+    },
+    "installers": {
+      "count": 4,
+      "description": "Legitimate installer patterns (no RC modification)"
+    },
+    "edge_cases": {
+      "count": 3,
+      "description": "Edge cases that should NOT trigger"
+    }
+  },
+  "samples": [
+    {
+      "id": "ben_001",
+      "name": "git_workflow",
+      "content": "git add . && git commit -m 'Update' && git push origin main",
+      "category": "development",
+      "source": "common_patterns",
+      "description": "Standard git workflow"
+    },
+    {
+      "id": "ben_002",
+      "name": "npm_install",
+      "content": "npm install && npm run build",
+      "category": "development",
+      "source": "common_patterns",
+      "description": "Node.js package installation"
+    },
+    {
+      "id": "ben_003",
+      "name": "cargo_build",
+      "content": "cargo build --release && cargo test",
+      "category": "development",
+      "source": "common_patterns",
+      "description": "Rust build and test"
+    },
+    {
+      "id": "ben_004",
+      "name": "docker_workflow",
+      "content": "docker build -t myapp . && docker run -d -p 8080:80 myapp",
+      "category": "development",
+      "source": "common_patterns",
+      "description": "Docker container workflow"
+    },
+    {
+      "id": "ben_005",
+      "name": "python_venv",
+      "content": "python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt",
+      "category": "development",
+      "source": "common_patterns",
+      "description": "Python virtual environment setup"
+    },
+    {
+      "id": "ben_006",
+      "name": "brew_services",
+      "content": "brew services restart postgresql",
+      "category": "sysadmin",
+      "source": "common_patterns",
+      "description": "Homebrew service management"
+    },
+    {
+      "id": "ben_007",
+      "name": "system_info",
+      "content": "uname -a && sw_vers && system_profiler SPHardwareDataType",
+      "category": "sysadmin",
+      "source": "common_patterns",
+      "description": "System information gathering"
+    },
+    {
+      "id": "ben_008",
+      "name": "log_viewing",
+      "content": "tail -f /var/log/system.log",
+      "category": "sysadmin",
+      "source": "common_patterns",
+      "description": "Log file monitoring"
+    },
+    {
+      "id": "ben_009",
+      "name": "disk_usage",
+      "content": "df -h && du -sh ~/",
+      "category": "sysadmin",
+      "source": "common_patterns",
+      "description": "Disk usage analysis"
+    },
+    {
+      "id": "ben_010",
+      "name": "curl_download",
+      "content": "curl -O https://example.com/file.zip",
+      "category": "network",
+      "source": "common_patterns",
+      "description": "File download with curl (NOT piped to shell)"
+    },
+    {
+      "id": "ben_011",
+      "name": "curl_api_call",
+      "content": "curl -H 'Authorization: Bearer token' https://api.example.com/users",
+      "category": "network",
+      "source": "common_patterns",
+      "description": "API call with curl"
+    },
+    {
+      "id": "ben_012",
+      "name": "curl_to_file",
+      "content": "curl https://example.com/data.json -o data.json",
+      "category": "network",
+      "source": "common_patterns",
+      "description": "Download to file (safe pattern)"
+    },
+    {
+      "id": "ben_013",
+      "name": "wget_download",
+      "content": "wget https://example.com/installer.dmg -O ~/Downloads/installer.dmg",
+      "category": "network",
+      "source": "common_patterns",
+      "description": "wget to file (NOT piped)"
+    },
+    {
+      "id": "ben_014",
+      "name": "nc_port_test",
+      "content": "nc -zv localhost 8080",
+      "category": "network",
+      "source": "common_patterns",
+      "description": "Legitimate port testing with netcat"
+    },
+    {
+      "id": "ben_015",
+      "name": "base64_encode",
+      "content": "echo 'hello' | base64",
+      "category": "data_processing",
+      "source": "common_patterns",
+      "description": "Legitimate base64 encoding"
+    },
+    {
+      "id": "ben_016",
+      "name": "base64_decode_print",
+      "content": "echo 'aGVsbG8K' | base64 -d",
+      "category": "data_processing",
+      "source": "common_patterns",
+      "description": "Base64 decode to stdout (NOT piped to shell)"
+    },
+    {
+      "id": "ben_017",
+      "name": "json_processing",
+      "content": "cat data.json | jq '.items[] | .name'",
+      "category": "data_processing",
+      "source": "common_patterns",
+      "description": "JSON processing with jq"
+    },
+    {
+      "id": "ben_018",
+      "name": "csv_processing",
+      "content": "cut -d',' -f1,3 data.csv | sort | uniq -c",
+      "category": "data_processing",
+      "source": "common_patterns",
+      "description": "CSV data processing"
+    },
+    {
+      "id": "ben_019",
+      "name": "backup_script",
+      "content": "cp -r ~/Documents /backup/$(date +%Y%m%d)/",
+      "category": "file_ops",
+      "source": "common_patterns",
+      "description": "Document backup"
+    },
+    {
+      "id": "ben_020",
+      "name": "archive_creation",
+      "content": "tar czf project.tar.gz src/ docs/ README.md",
+      "category": "file_ops",
+      "source": "common_patterns",
+      "description": "Archive creation"
+    },
+    {
+      "id": "ben_021",
+      "name": "cleanup_script",
+      "content": "find /tmp -type f -mtime +7 -delete",
+      "category": "file_ops",
+      "source": "common_patterns",
+      "description": "Temporary file cleanup"
+    },
+    {
+      "id": "ben_022",
+      "name": "homebrew_style_installer",
+      "content": "mkdir -p /usr/local/bin && git clone https://github.com/example/tool.git /usr/local/share/tool && ln -sf /usr/local/share/tool/bin/tool /usr/local/bin/tool",
+      "category": "installers",
+      "source": "official_installers",
+      "description": "Homebrew-style installation (no RC modification)"
+    },
+    {
+      "id": "ben_023",
+      "name": "rustup_style_installer",
+      "content": "mkdir -p \"$HOME/.cargo/bin\" && echo 'Add $HOME/.cargo/bin to your PATH'",
+      "category": "installers",
+      "source": "official_installers",
+      "description": "Rustup-style installation (prompts, no auto RC mod)"
+    },
+    {
+      "id": "ben_024",
+      "name": "nvm_style_installer",
+      "content": "NVM_DIR=\"$HOME/.nvm\" && mkdir -p \"$NVM_DIR\" && git clone https://github.com/nvm-sh/nvm.git \"$NVM_DIR\"",
+      "category": "installers",
+      "source": "official_installers",
+      "description": "NVM-style installation (no RC modification)"
+    },
+    {
+      "id": "ben_025",
+      "name": "word_containing_bash",
+      "content": "echo 'This is bashful behavior'",
+      "category": "edge_cases",
+      "source": "test_cases",
+      "description": "Word containing 'bash' should not trigger"
+    },
+    {
+      "id": "ben_026",
+      "name": "word_containing_curl",
+      "content": "The curly brackets are important",
+      "category": "edge_cases",
+      "source": "test_cases",
+      "description": "Word containing 'curl' should not trigger"
+    },
+    {
+      "id": "ben_027",
+      "name": "documentation_about_attacks",
+      "content": "# Security Documentation\\n\\nCommon attack patterns include downloading and executing scripts.",
+      "category": "edge_cases",
+      "source": "test_cases",
+      "description": "Documentation discussing attacks should not trigger"
+    }
+  ],
+  "notes": {
+    "rc_modification_warning": "Scripts that modify RC files (~/.bashrc, ~/.zshrc) are correctly flagged as Medium severity. This is intentional - legitimate installers should prompt users rather than auto-modifying shell profiles.",
+    "curl_bash_distinction": "curl downloads are only flagged when piped to a shell interpreter. curl -O, curl -o file, and API calls are safe patterns.",
+    "netcat_distinction": "nc -zv (port scanning) is safe. nc -e, nc -c (shell execution) are flagged."
+  }
+}
