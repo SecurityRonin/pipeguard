@@ -1,11 +1,14 @@
 // src/update/mod.rs
 pub mod crypto;
-pub mod storage;
 pub mod manager;
+pub mod storage;
 
 pub use crypto::CryptoVerifier;
-pub use storage::VersionedStorage;
 pub use manager::UpdateManager;
+pub use storage::VersionedStorage;
+
+/// Type alias for backward compatibility with tests.
+pub type Storage = VersionedStorage;
 
 #[derive(Debug, Clone)]
 pub struct UpdateConfig {

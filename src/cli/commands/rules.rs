@@ -31,5 +31,47 @@ pub fn cmd_rules(action: RulesAction) -> anyhow::Result<ExitCode> {
                 }
             }
         }
+        RulesAction::Info { path } => {
+            info!(path = %path.display(), "Showing rule info");
+            let content = std::fs::read_to_string(&path)
+                .with_context(|| format!("Failed to read rules file '{}'", path.display()))?;
+
+            // Parse rule metadata from YARA source
+            let mut in_meta = false;
+            let mut current_rule: Option<String> = None;
+
+            for line in content.lines() {
+                let trimmed = line.trim();
+
+                if trimmed.starts_with("rule ") {
+                    let name = trimmed
+                        .strip_prefix("rule ")
+                        .and_then(|s| s.split_whitespace().next())
+                        .unwrap_or("unknown");
+                    current_rule = Some(name.to_string());
+                    println!("{}", name.cyan().bold());
+                    in_meta = false;
+                } else if trimmed == "meta:" {
+                    in_meta = true;
+                } else if in_meta && trimmed.starts_with("strings:")
+                    || trimmed.starts_with("condition:")
+                {
+                    in_meta = false;
+                } else if in_meta && current_rule.is_some() {
+                    if let Some((key, value)) = trimmed.split_once('=') {
+                        let key = key.trim();
+                        let value = value.trim().trim_matches('"');
+                        println!("  {}: {}", key, value);
+                    }
+                }
+
+                if trimmed == "}" && current_rule.is_some() {
+                    current_rule = None;
+                    println!();
+                }
+            }
+
+            Ok(ExitCode::SUCCESS)
+        }
     }
 }

@@ -8,7 +8,10 @@ fn test_default_config_includes_updates() {
     assert!(config.updates.enabled);
     assert!(!config.updates.auto_apply);
     assert_eq!(config.updates.check_interval_hours, 24);
-    assert_eq!(config.updates.source, "https://github.com/SecurityRonin/pipeguard");
+    assert_eq!(
+        config.updates.source,
+        "https://github.com/SecurityRonin/pipeguard"
+    );
     assert_eq!(config.updates.keep_versions, 3);
 }
 

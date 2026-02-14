@@ -1,8 +1,7 @@
-use pipeguard::detection::scanner::{YaraScanner, ScanResult};
+use pipeguard::detection::scanner::YaraScanner;
 use pipeguard::detection::threat::ThreatLevel;
-use std::path::PathBuf;
-use tempfile::TempDir;
 use std::fs;
+use tempfile::TempDir;
 
 #[test]
 fn scanner_loads_rules_from_string() {

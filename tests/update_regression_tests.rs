@@ -2,10 +2,10 @@
 // Ensures no regression in critical security and reliability properties
 
 use anyhow::Result;
-use pipeguard::update::{CryptoVerifier, Storage, UpdateManager};
+use ed25519_dalek::Signer;
+use pipeguard::update::{CryptoVerifier, Storage};
 use std::fs;
 use std::os::unix;
-use std::path::PathBuf;
 use tempfile::TempDir;
 
 /// Regression test: Ensure symlink atomicity is preserved across updates
@@ -82,10 +82,7 @@ fn test_regression_never_activate_unverified() -> Result<()> {
     let result = storage.activate_version("malicious");
 
     // Must fail - cannot activate unverified version
-    assert!(
-        result.is_err(),
-        "Must never activate unverified version"
-    );
+    assert!(result.is_err(), "Must never activate unverified version");
 
     Ok(())
 }
@@ -182,10 +179,10 @@ fn test_regression_corrupted_symlink_recovery() -> Result<()> {
 #[test]
 fn test_regression_detect_minimal_tampering() -> Result<()> {
     // Generate test keypair
-    let keypair = ed25519_dalek::SigningKey::generate(&mut rand::rngs::OsRng);
+    let keypair = ed25519_dalek::SigningKey::generate(&mut rand_core::OsRng);
     let public_key = keypair.verifying_key();
 
-    let verifier = CryptoVerifier::new(public_key.to_bytes());
+    let verifier = CryptoVerifier::from_public_key(public_key.to_bytes())?;
 
     // Original content
     let content = b"rule test { condition: true }";
@@ -223,18 +220,13 @@ fn test_regression_version_path_traversal() -> Result<()> {
     ];
 
     for bad_version in malicious_versions {
-        // create_version should reject or sanitize
+        // create_version must reject path traversal attempts
         let result = storage.create_version(bad_version);
-
-        if result.is_ok() {
-            // If creation succeeded, ensure it's contained within versions dir
-            let version_path = temp.path().join("versions").join(bad_version);
-            assert!(
-                version_path.starts_with(temp.path().join("versions")),
-                "Version path must be contained: {:?}",
-                version_path
-            );
-        }
+        assert!(
+            result.is_err(),
+            "Must reject path traversal: {}",
+            bad_version
+        );
     }
 
     Ok(())
@@ -271,8 +263,8 @@ fn test_regression_disk_space_handling() -> Result<()> {
 /// Bug scenario: Multiple shells checking updates cause race conditions
 #[test]
 fn test_regression_concurrent_checks() -> Result<()> {
-    use std::thread;
     use std::sync::Arc;
+    use std::thread;
 
     let temp = TempDir::new()?;
     let temp_path = Arc::new(temp.path().to_path_buf());
@@ -282,7 +274,7 @@ fn test_regression_concurrent_checks() -> Result<()> {
         .map(|_| {
             let path = Arc::clone(&temp_path);
             thread::spawn(move || -> Result<()> {
-                let storage = Storage::new(&path)?;
+                let storage = Storage::new(path.as_path())?;
 
                 // Each thread attempts to check/list versions
                 let _ = storage.list_versions()?;
@@ -295,7 +287,10 @@ fn test_regression_concurrent_checks() -> Result<()> {
 
     // All threads must complete without panics
     for handle in handles {
-        handle.join().expect("Thread panicked").expect("Thread errored");
+        handle
+            .join()
+            .expect("Thread panicked")
+            .expect("Thread errored");
     }
 
     Ok(())
@@ -360,11 +355,8 @@ fn test_regression_marker_file_atomicity() -> Result<()> {
     fs::write(&marker, b"partial")?;
 
     // Verification check must be conservative (treat corruption as unverified)
-    let is_verified = storage.is_verified("1.0.0")?;
-    assert!(
-        !is_verified || is_verified,
-        "Corrupted marker must have deterministic behavior"
-    );
+    // Corrupted marker has deterministic behavior: is_verified returns Ok (doesn't panic)
+    let _is_verified = storage.is_verified("1.0.0")?;
 
     Ok(())
 }
@@ -417,8 +409,12 @@ fn test_regression_version_ordering() -> Result<()> {
 
     // Create versions with tricky ordering
     let versions = vec![
-        "1.9.0", "1.10.0", "1.11.0",  // Numeric vs lexical
-        "2.0.0-beta", "2.0.0", "2.0.1",  // Pre-release
+        "1.9.0",
+        "1.10.0",
+        "1.11.0", // Numeric vs lexical
+        "2.0.0-beta",
+        "2.0.0",
+        "2.0.1", // Pre-release
     ];
 
     for v in &versions {

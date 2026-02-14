@@ -10,20 +10,40 @@ pub struct VersionedStorage {
 }
 
 impl VersionedStorage {
-    pub fn new(root: PathBuf) -> Result<Self> {
-        fs::create_dir_all(&root)
-            .context("Failed to create storage root directory")?;
-        fs::create_dir_all(root.join("versions"))
-            .context("Failed to create versions directory")?;
+    pub fn new(root: impl Into<PathBuf>) -> Result<Self> {
+        let root = root.into();
+        fs::create_dir_all(&root).context("Failed to create storage root directory")?;
+        fs::create_dir_all(root.join("versions")).context("Failed to create versions directory")?;
 
         Ok(Self { root })
     }
 
+    /// Create a new version directory (alias for create_version_dir)
+    pub fn create_version(&self, version: &str) -> Result<PathBuf> {
+        self.create_version_dir(version)
+    }
+
+    /// Validate version string to prevent path traversal
+    fn validate_version(version: &str) -> Result<()> {
+        if version.contains("..")
+            || version.contains('/')
+            || version.contains('\\')
+            || version.contains('\0')
+            || version.is_empty()
+        {
+            anyhow::bail!(
+                "Invalid version string '{}': must not contain path separators, '..' or null bytes",
+                version
+            );
+        }
+        Ok(())
+    }
+
     /// Create a new version directory
     pub fn create_version_dir(&self, version: &str) -> Result<PathBuf> {
+        Self::validate_version(version)?;
         let version_path = self.root.join("versions").join(version);
-        fs::create_dir_all(&version_path)
-            .context("Failed to create version directory")?;
+        fs::create_dir_all(&version_path).context("Failed to create version directory")?;
         debug!(version = version, "Created version directory");
         Ok(version_path)
     }
@@ -31,23 +51,36 @@ impl VersionedStorage {
     /// Write rules to version directory
     pub fn write_rules(&self, version_path: &Path, rules: &[u8]) -> Result<()> {
         let rules_file = version_path.join("core.yar");
-        fs::write(rules_file, rules)
-            .context("Failed to write rules file")?;
+        fs::write(rules_file, rules).context("Failed to write rules file")?;
         Ok(())
     }
 
     /// Read rules from version directory
     pub fn read_rules(&self, version_path: &Path) -> Result<Vec<u8>> {
         let rules_file = version_path.join("core.yar");
-        fs::read(rules_file)
-            .context("Failed to read rules file")
+        fs::read(rules_file).context("Failed to read rules file")
     }
 
-    /// Atomically activate a version by updating the symlink
+    /// Atomically activate a version by updating the symlink.
+    /// Requires the version to exist and be verified.
     pub fn activate_version(&self, version: &str) -> Result<()> {
+        if !self.has_version(version) {
+            anyhow::bail!("Version {} does not exist", version);
+        }
+        if !self.is_verified(version)? {
+            anyhow::bail!("Version {} is not verified - refusing to activate", version);
+        }
+
         let target = PathBuf::from("versions").join(version);
         let link_path = self.root.join("active");
-        let temp_link = self.root.join(".active.tmp");
+        let temp_link = self.root.join(format!(
+            ".active.tmp.{}.{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_nanos()
+        ));
 
         // Remove temp link if it exists from previous failed attempt
         let _ = fs::remove_file(&temp_link);
@@ -56,8 +89,7 @@ impl VersionedStorage {
         #[cfg(unix)]
         {
             use std::os::unix::fs as unix_fs;
-            unix_fs::symlink(&target, &temp_link)
-                .context("Failed to create temporary symlink")?;
+            unix_fs::symlink(&target, &temp_link).context("Failed to create temporary symlink")?;
         }
 
         #[cfg(not(unix))]
@@ -66,24 +98,26 @@ impl VersionedStorage {
         }
 
         // Atomically rename (this is atomic on Unix)
-        fs::rename(&temp_link, &link_path)
-            .context("Failed to activate version")?;
+        fs::rename(&temp_link, &link_path).context("Failed to activate version")?;
 
         debug!(version = version, "Symlink updated to version");
         Ok(())
     }
 
-    /// Get currently active version
-    pub fn current_version(&self) -> Result<String> {
+    /// Get currently active version, or None if no version is active
+    pub fn current_version(&self) -> Result<Option<String>> {
         let link_path = self.root.join("active");
-        let target = fs::read_link(&link_path)
-            .context("No active version set")?;
-
-        let version = target.file_name()
-            .and_then(|s| s.to_str())
-            .ok_or_else(|| anyhow::anyhow!("Invalid version path"))?;
-
-        Ok(version.to_string())
+        match fs::read_link(&link_path) {
+            Ok(target) => {
+                let version = target
+                    .file_name()
+                    .and_then(|s| s.to_str())
+                    .map(|s| s.to_string());
+                Ok(version)
+            }
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
+            Err(e) => Err(anyhow::anyhow!("Failed to read active symlink: {}", e)),
+        }
     }
 
     /// Check if version exists
@@ -100,10 +134,32 @@ impl VersionedStorage {
         Ok(path)
     }
 
+    /// Mark a version as verified by creating the .verified marker
+    pub fn mark_verified(&self, version: &str) -> Result<()> {
+        let marker = self.root.join("versions").join(version).join(".verified");
+        fs::write(&marker, "").context("Failed to create verification marker")?;
+        Ok(())
+    }
+
     /// Check if version has .verified marker
     pub fn is_verified(&self, version: &str) -> Result<bool> {
         let marker = self.root.join("versions").join(version).join(".verified");
         Ok(marker.exists())
+    }
+
+    /// List all version directories
+    pub fn list_versions(&self) -> Result<Vec<String>> {
+        let versions_dir = self.root.join("versions");
+        let mut versions = Vec::new();
+        for entry in fs::read_dir(&versions_dir)? {
+            let entry = entry?;
+            if entry.path().is_dir() {
+                if let Some(name) = entry.file_name().to_str() {
+                    versions.push(name.to_string());
+                }
+            }
+        }
+        Ok(versions)
     }
 
     /// Cleanup old versions, keeping only the latest N
@@ -115,14 +171,12 @@ impl VersionedStorage {
             .collect();
 
         // Sort by modification time (newest first)
-        versions.sort_by_key(|e| std::cmp::Reverse(
-            e.metadata().ok().and_then(|m| m.modified().ok())
-        ));
+        versions
+            .sort_by_key(|e| std::cmp::Reverse(e.metadata().ok().and_then(|m| m.modified().ok())));
 
         // Remove versions beyond keep limit
         for entry in versions.iter().skip(keep) {
-            fs::remove_dir_all(entry.path())
-                .context("Failed to remove old version")?;
+            fs::remove_dir_all(entry.path()).context("Failed to remove old version")?;
         }
 
         Ok(())

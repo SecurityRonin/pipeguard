@@ -1,0 +1,6 @@
+# taplo configuration for PipeGuard
+
+exclude = [".worktrees/**", "target/**"]
+
+[formatting]
+align_entries = false

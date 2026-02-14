@@ -1,6 +1,6 @@
-pub mod threat;
-pub mod scanner;
 pub mod pipeline;
+pub mod scanner;
+pub mod threat;
 
 // Re-export common types for convenience
-pub use threat::{ThreatLevel, ThreatResponse, ThreatMatch};
+pub use threat::{ThreatLevel, ThreatMatch, ThreatResponse};

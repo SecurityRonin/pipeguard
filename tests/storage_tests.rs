@@ -1,7 +1,7 @@
 // tests/storage_tests.rs
 use pipeguard::update::VersionedStorage;
-use tempfile::tempdir;
 use std::fs;
+use tempfile::tempdir;
 
 #[test]
 fn test_create_version_directory() {
@@ -11,7 +11,12 @@ fn test_create_version_directory() {
     let version_path = storage.create_version_dir("1.0.0").unwrap();
 
     assert!(version_path.exists());
-    assert!(version_path.join("..").join("..").join("versions").join("1.0.0").exists());
+    assert!(version_path
+        .join("..")
+        .join("..")
+        .join("versions")
+        .join("1.0.0")
+        .exists());
 }
 
 #[test]
@@ -34,6 +39,7 @@ fn test_activate_version_creates_symlink() {
     let storage = VersionedStorage::new(temp.path().to_path_buf()).unwrap();
 
     storage.create_version_dir("1.0.0").unwrap();
+    storage.mark_verified("1.0.0").unwrap();
     storage.activate_version("1.0.0").unwrap();
 
     let active_link = temp.path().join("active");
@@ -47,10 +53,11 @@ fn test_current_version_returns_active() {
     let storage = VersionedStorage::new(temp.path().to_path_buf()).unwrap();
 
     storage.create_version_dir("1.0.0").unwrap();
+    storage.mark_verified("1.0.0").unwrap();
     storage.activate_version("1.0.0").unwrap();
 
     let current = storage.current_version().unwrap();
-    assert_eq!(current, "1.0.0");
+    assert_eq!(current, Some("1.0.0".to_string()));
 }
 
 #[test]
@@ -93,13 +100,21 @@ fn test_rollback_switches_active_symlink() {
     let storage = VersionedStorage::new(temp.path().to_path_buf()).unwrap();
 
     storage.create_version_dir("1.0.0").unwrap();
+    storage.mark_verified("1.0.0").unwrap();
     storage.create_version_dir("1.1.0").unwrap();
+    storage.mark_verified("1.1.0").unwrap();
 
     storage.activate_version("1.1.0").unwrap();
-    assert_eq!(storage.current_version().unwrap(), "1.1.0");
+    assert_eq!(
+        storage.current_version().unwrap(),
+        Some("1.1.0".to_string())
+    );
 
     storage.activate_version("1.0.0").unwrap();
-    assert_eq!(storage.current_version().unwrap(), "1.0.0");
+    assert_eq!(
+        storage.current_version().unwrap(),
+        Some("1.0.0".to_string())
+    );
 }
 
 #[test]
@@ -108,7 +123,9 @@ fn test_activation_is_atomic() {
     let storage = VersionedStorage::new(temp.path().to_path_buf()).unwrap();
 
     storage.create_version_dir("1.0.0").unwrap();
+    storage.mark_verified("1.0.0").unwrap();
     storage.create_version_dir("1.1.0").unwrap();
+    storage.mark_verified("1.1.0").unwrap();
     storage.activate_version("1.0.0").unwrap();
 
     // Activation should never leave broken symlink
@@ -117,5 +134,8 @@ fn test_activation_is_atomic() {
     let active_link = temp.path().join("active");
     assert!(active_link.exists());
     assert!(active_link.read_link().is_ok());
-    assert_eq!(storage.current_version().unwrap(), "1.1.0");
+    assert_eq!(
+        storage.current_version().unwrap(),
+        Some("1.1.0".to_string())
+    );
 }

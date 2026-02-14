@@ -24,4 +24,15 @@ elif [[ -n "${BASH_VERSION:-}" ]]; then
     if [[ -f "${PIPEGUARD_SHARE}/shell/pipeguard.bash" ]]; then
         source "${PIPEGUARD_SHARE}/shell/pipeguard.bash"
     fi
+elif [[ -n "${FISH_VERSION:-}" ]]; then
+    # Fish shell integration
+    # NOTE: Fish cannot source POSIX scripts. This branch only works if Fish
+    # evaluates init.sh via `bass` or similar POSIX-compat wrapper.
+    # Preferred setup for Fish users:
+    #   cp ~/.local/share/pipeguard/shell/pipeguard.fish ~/.config/fish/conf.d/
+    # or add to ~/.config/fish/config.fish:
+    #   source ~/.local/share/pipeguard/shell/pipeguard.fish
+    if [[ -f "${PIPEGUARD_SHARE}/shell/pipeguard.fish" ]]; then
+        source "${PIPEGUARD_SHARE}/shell/pipeguard.fish"
+    fi
 fi

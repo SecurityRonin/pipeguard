@@ -1,0 +1,86 @@
+#!/usr/bin/env bash
+# PipeGuard pre-commit hook
+# Install: make install-hooks
+set -euo pipefail
+
+# YARA build environment
+export YARA_LIBRARY_PATH="${YARA_LIBRARY_PATH:-/opt/homebrew/lib}"
+export BINDGEN_EXTRA_CLANG_ARGS="${BINDGEN_EXTRA_CLANG_ARGS:--I/opt/homebrew/include}"
+
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
+
+pass() { printf "${GREEN}✓${NC} %s\n" "$1"; }
+fail() { printf "${RED}✗${NC} %s\n" "$1"; exit 1; }
+warn() { printf "${YELLOW}!${NC} %s\n" "$1"; }
+
+echo "Running pre-commit checks..."
+
+# 1. Rust formatting
+printf "  Checking Rust formatting... "
+if cargo fmt --check >/dev/null 2>&1; then
+    pass "formatted"
+else
+    fail "cargo fmt --check failed. Run 'cargo fmt' to fix."
+fi
+
+# 2. TOML formatting (optional — skip if taplo not installed)
+if command -v taplo >/dev/null 2>&1; then
+    printf "  Checking TOML formatting... "
+    if taplo fmt --check >/dev/null 2>&1; then
+        pass "formatted"
+    else
+        fail "taplo fmt --check failed. Run 'taplo fmt' to fix."
+    fi
+fi
+
+# 3. Typos (optional — skip if typos not installed)
+if command -v typos >/dev/null 2>&1; then
+    printf "  Checking for typos... "
+    if typos >/dev/null 2>&1; then
+        pass "no typos"
+    else
+        fail "typos found issues. Run 'typos' to see details."
+    fi
+fi
+
+# 4. Clippy
+printf "  Running clippy... "
+if cargo clippy --all-targets -- -D warnings -D clippy::all 2>/dev/null; then
+    pass "no warnings"
+else
+    fail "clippy found issues. Run 'cargo clippy --fix' to fix."
+fi
+
+# 5. Unused dependencies (optional — skip if cargo-machete not installed)
+if command -v cargo-machete >/dev/null 2>&1; then
+    printf "  Checking for unused deps... "
+    if cargo machete >/dev/null 2>&1; then
+        pass "all deps used"
+    else
+        fail "unused dependencies found. Run 'cargo machete' to see details."
+    fi
+fi
+
+# 6. Tests (lib only for speed)
+printf "  Running unit tests... "
+if cargo test --lib 2>/dev/null; then
+    pass "all passed"
+else
+    fail "unit tests failed."
+fi
+
+# 7. cargo-deny advisories (optional — skip if not installed)
+if command -v cargo-deny >/dev/null 2>&1; then
+    printf "  Checking advisories... "
+    if cargo deny check advisories 2>/dev/null; then
+        pass "no advisories"
+    else
+        warn "cargo-deny found advisories (non-blocking)"
+    fi
+fi
+
+echo ""
+pass "All pre-commit checks passed!"

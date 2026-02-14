@@ -87,7 +87,10 @@ fn low_response_is_warn() {
 
 #[test]
 fn medium_response_is_prompt() {
-    assert_eq!(ThreatLevel::Medium.default_response(), ThreatResponse::Prompt);
+    assert_eq!(
+        ThreatLevel::Medium.default_response(),
+        ThreatResponse::Prompt
+    );
 }
 
 #[test]
@@ -118,7 +121,12 @@ fn threat_levels_are_not_equal_to_others() {
 #[test]
 fn threat_level_can_be_cloned() {
     let level = ThreatLevel::High;
-    let cloned = level.clone();
+    let cloned = {
+        // Explicitly test the Clone impl (not just Copy)
+        #[allow(clippy::clone_on_copy)]
+        let c = level.clone();
+        c
+    };
     assert_eq!(level, cloned);
 }
 

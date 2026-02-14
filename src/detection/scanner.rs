@@ -90,10 +90,10 @@ impl YaraScanner {
                 .iter()
                 .find(|meta| meta.identifier == "description")
                 .and_then(|meta| match &meta.value {
-                    yara::MetadataValue::String(s) => Some(s.as_ref()),
+                    yara::MetadataValue::String(s) => Some(s),
                     _ => None,
                 })
-                .unwrap_or("No description");
+                .map_or("No description", |v| v);
 
             matches.push(ThreatMatch::new(m.identifier, severity, description));
         }
@@ -136,15 +136,10 @@ fn count_yara_rules(source: &str) -> usize {
         .filter(|line| {
             let trimmed = line.trim_start();
             // Match "rule <name>" or "private rule <name>" or "global rule <name>"
-            let after_keyword = if let Some(rest) = trimmed.strip_prefix("rule ") {
-                Some(rest)
-            } else if let Some(rest) = trimmed.strip_prefix("private rule ") {
-                Some(rest)
-            } else if let Some(rest) = trimmed.strip_prefix("global rule ") {
-                Some(rest)
-            } else {
-                None
-            };
+            let after_keyword = trimmed
+                .strip_prefix("rule ")
+                .or_else(|| trimmed.strip_prefix("private rule "))
+                .or_else(|| trimmed.strip_prefix("global rule "));
             // Verify the next token looks like a valid identifier (starts with alpha/underscore)
             after_keyword
                 .map(|rest| rest.starts_with(|c: char| c.is_ascii_alphabetic() || c == '_'))

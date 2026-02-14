@@ -5,7 +5,7 @@
 
 use thiserror::Error;
 use tracing::Level;
-use tracing_subscriber::{fmt, EnvFilter, prelude::*};
+use tracing_subscriber::{fmt, prelude::*, EnvFilter};
 
 /// Log output format.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
@@ -35,29 +35,25 @@ pub fn init(level: Level, format: LogFormat) -> Result<(), LogInitError> {
 
     match format {
         LogFormat::Pretty => {
-            let subscriber = tracing_subscriber::registry()
-                .with(filter)
-                .with(
-                    fmt::layer()
-                        .with_writer(std::io::stderr)
-                        .with_target(true)
-                        .with_thread_ids(false)
-                        .with_thread_names(false),
-                );
+            let subscriber = tracing_subscriber::registry().with(filter).with(
+                fmt::layer()
+                    .with_writer(std::io::stderr)
+                    .with_target(true)
+                    .with_thread_ids(false)
+                    .with_thread_names(false),
+            );
             tracing::subscriber::set_global_default(subscriber)
                 .map_err(|e| LogInitError::SetGlobalError(e.to_string()))?;
         }
         LogFormat::Json => {
-            let subscriber = tracing_subscriber::registry()
-                .with(filter)
-                .with(
-                    fmt::layer()
-                        .json()
-                        .with_writer(std::io::stderr)
-                        .with_target(true)
-                        .with_thread_ids(false)
-                        .with_thread_names(false),
-                );
+            let subscriber = tracing_subscriber::registry().with(filter).with(
+                fmt::layer()
+                    .json()
+                    .with_writer(std::io::stderr)
+                    .with_target(true)
+                    .with_thread_ids(false)
+                    .with_thread_names(false),
+            );
             tracing::subscriber::set_global_default(subscriber)
                 .map_err(|e| LogInitError::SetGlobalError(e.to_string()))?;
         }

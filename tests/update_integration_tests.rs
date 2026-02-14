@@ -2,10 +2,10 @@
 // Tests complete update cycles from check → download → verify → activate
 
 use anyhow::Result;
-use pipeguard::config::{ResponseAction, Settings, UpdatesConfig};
-use pipeguard::update::{CryptoVerifier, Storage, UpdateManager};
+use ed25519_dalek::Signer;
+use pipeguard::config::settings::Config;
+use pipeguard::update::{CryptoVerifier, Storage};
 use std::fs;
-use std::path::PathBuf;
 use tempfile::TempDir;
 
 /// Integration test: Full update cycle (check → apply → verify)
@@ -25,12 +25,12 @@ fn test_integration_full_update_cycle() -> Result<()> {
     fs::write(&rules_path, b"rule new { condition: true }")?;
 
     // Generate signature for new version
-    let keypair = ed25519_dalek::SigningKey::generate(&mut rand::rngs::OsRng);
+    let keypair = ed25519_dalek::SigningKey::generate(&mut rand_core::OsRng);
     let content = fs::read(&rules_path)?;
     let signature = keypair.sign(&content);
 
     // Verify with correct public key
-    let verifier = CryptoVerifier::new(keypair.verifying_key().to_bytes());
+    let verifier = CryptoVerifier::from_public_key(keypair.verifying_key().to_bytes())?;
     verifier.verify(&content, &signature.to_bytes())?;
 
     // Mark as verified
@@ -68,10 +68,6 @@ fn test_integration_update_rollback() -> Result<()> {
 
     assert_eq!(storage.current_version()?, Some("1.0.0".to_string()));
 
-    // Old version must still work
-    let rules_path = temp.path().join("active/rules.yar");
-    assert!(rules_path.exists() || !rules_path.exists()); // Either exists or doesn't
-
     Ok(())
 }
 
@@ -100,8 +96,8 @@ keep_versions = 3
 "#;
     fs::write(&config_path, config_content)?;
 
-    let settings = Settings::load(&config_path)?;
-    assert!(settings.updates.auto_apply);
+    let config = Config::from_file(&config_path)?;
+    assert!(config.updates.auto_apply);
 
     // Simulate update manager respecting config
     let storage_path = temp.path().join("storage");
@@ -116,7 +112,7 @@ keep_versions = 3
     storage.mark_verified("1.1.0")?;
 
     // With auto_apply, manager should activate automatically
-    if settings.updates.auto_apply {
+    if config.updates.auto_apply {
         storage.activate_version("1.1.0")?;
     }
 
@@ -146,7 +142,7 @@ fn test_integration_cleanup_after_updates() -> Result<()> {
 
     let remaining = storage.list_versions()?;
 
-    // Should have: active (1.4.0) + 2 previous = 3 total
+    // Should have: active (1.4.0) + some previous = limited total
     assert!(
         remaining.len() <= 3,
         "Expected <= 3 versions, got {}",
@@ -205,11 +201,11 @@ fn test_integration_multistage_verification() -> Result<()> {
     assert!(!storage.is_verified("1.0.0")?);
 
     // Stage 3: Cryptographic verification
-    let keypair = ed25519_dalek::SigningKey::generate(&mut rand::rngs::OsRng);
+    let keypair = ed25519_dalek::SigningKey::generate(&mut rand_core::OsRng);
     let content = fs::read(&rules_path)?;
     let signature = keypair.sign(&content);
 
-    let verifier = CryptoVerifier::new(keypair.verifying_key().to_bytes());
+    let verifier = CryptoVerifier::from_public_key(keypair.verifying_key().to_bytes())?;
     verifier.verify(&content, &signature.to_bytes())?;
 
     // Stage 4: Mark as verified
@@ -247,11 +243,11 @@ keep_versions = 3
 "#;
     fs::write(&config_path, config_content)?;
 
-    let settings = Settings::load(&config_path)?;
-    assert!(!settings.updates.enabled);
+    let config = Config::from_file(&config_path)?;
+    assert!(!config.updates.enabled);
 
     // With updates disabled, manager should skip checks
-    if settings.updates.enabled {
+    if config.updates.enabled {
         panic!("Updates should be disabled");
     }
 
@@ -272,9 +268,6 @@ fn test_integration_check_interval() -> Result<()> {
 
     // Immediate second check should skip (within interval)
     assert!(timestamp_file.exists());
-
-    // Parse and validate interval logic would go here
-    // (actual shell integration handles this via _pipeguard_should_check)
 
     Ok(())
 }
@@ -316,7 +309,7 @@ fn test_integration_concurrent_shells() -> Result<()> {
 
     // Setup initial version
     {
-        let storage = Storage::new(&temp_path)?;
+        let storage = Storage::new(temp_path.as_path())?;
         storage.create_version("1.0.0")?;
         storage.mark_verified("1.0.0")?;
         storage.activate_version("1.0.0")?;
@@ -324,10 +317,10 @@ fn test_integration_concurrent_shells() -> Result<()> {
 
     // Simulate 3 shell sessions checking concurrently
     let handles: Vec<_> = (0..3)
-        .map(|i| {
+        .map(|_| {
             let path = Arc::clone(&temp_path);
             thread::spawn(move || -> Result<()> {
-                let storage = Storage::new(&path)?;
+                let storage = Storage::new(path.as_path())?;
 
                 // Each shell checks current version
                 let version = storage.current_version()?;
@@ -390,7 +383,10 @@ fn test_integration_rules_accessibility() -> Result<()> {
     let active_rules = temp.path().join("active/rules.yar");
     let active_content = fs::read(&active_rules)?;
 
-    assert_eq!(active_content, rules_content, "Rules must be accessible via active symlink");
+    assert_eq!(
+        active_content, rules_content,
+        "Rules must be accessible via active symlink"
+    );
 
     Ok(())
 }

@@ -26,7 +26,7 @@ pub enum ConfigError {
 }
 
 /// Main configuration structure.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Config {
     pub detection: DetectionConfig,
@@ -36,18 +36,6 @@ pub struct Config {
     pub updates: UpdatesConfig,
 }
 
-impl Default for Config {
-    fn default() -> Self {
-        Self {
-            detection: DetectionConfig::default(),
-            response: ResponseConfig::default(),
-            rules: RulesConfig::default(),
-            allowlist: AllowlistConfig::default(),
-            updates: UpdatesConfig::default(),
-        }
-    }
-}
-
 impl Config {
     /// Load configuration from a TOML file.
     pub fn from_file(path: &Path) -> Result<Self, ConfigError> {
@@ -55,10 +43,11 @@ impl Config {
             path: path.to_path_buf(),
             source,
         })?;
-        let config: Config = toml::from_str(&content).map_err(|source| ConfigError::ParseError {
-            path: path.to_path_buf(),
-            source,
-        })?;
+        let config: Config =
+            toml::from_str(&content).map_err(|source| ConfigError::ParseError {
+                path: path.to_path_buf(),
+                source,
+            })?;
         Ok(config)
     }
 
@@ -187,7 +176,7 @@ impl Default for UpdatesConfig {
 pub struct ResponseOverride;
 
 impl ResponseOverride {
-    pub fn from_str(s: &str) -> Option<ThreatResponse> {
+    pub fn parse(s: &str) -> Option<ThreatResponse> {
         match s.to_lowercase().as_str() {
             "allow" => Some(ThreatResponse::Allow),
             "warn" => Some(ThreatResponse::Warn),
@@ -221,8 +210,7 @@ mod threat_response_serde {
         D: Deserializer<'de>,
     {
         let s = String::deserialize(deserializer)?;
-        ResponseOverride::from_str(&s).ok_or_else(|| {
-            serde::de::Error::custom(format!("invalid response type: {}", s))
-        })
+        ResponseOverride::parse(&s)
+            .ok_or_else(|| serde::de::Error::custom(format!("invalid response type: {}", s)))
     }
 }

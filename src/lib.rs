@@ -1,5 +1,5 @@
-pub mod detection;
-pub mod config;
 pub mod cli;
-pub mod update;
+pub mod config;
+pub mod detection;
 pub mod logging;
+pub mod update;

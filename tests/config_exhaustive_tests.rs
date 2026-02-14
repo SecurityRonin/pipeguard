@@ -2,8 +2,8 @@
 
 use pipeguard::config::settings::{Config, ResponseOverride};
 use pipeguard::detection::threat::{ThreatLevel, ThreatResponse};
-use tempfile::TempDir;
 use std::fs;
+use tempfile::TempDir;
 
 // =============================================================================
 // Config loading tests
@@ -140,44 +140,65 @@ fn default_rules_path_none() {
 
 #[test]
 fn response_override_allow() {
-    assert_eq!(ResponseOverride::from_str("allow"), Some(ThreatResponse::Allow));
+    assert_eq!(
+        ResponseOverride::parse("allow"),
+        Some(ThreatResponse::Allow)
+    );
 }
 
 #[test]
 fn response_override_warn() {
-    assert_eq!(ResponseOverride::from_str("warn"), Some(ThreatResponse::Warn));
+    assert_eq!(ResponseOverride::parse("warn"), Some(ThreatResponse::Warn));
 }
 
 #[test]
 fn response_override_prompt() {
-    assert_eq!(ResponseOverride::from_str("prompt"), Some(ThreatResponse::Prompt));
+    assert_eq!(
+        ResponseOverride::parse("prompt"),
+        Some(ThreatResponse::Prompt)
+    );
 }
 
 #[test]
 fn response_override_block() {
-    assert_eq!(ResponseOverride::from_str("block"), Some(ThreatResponse::Block));
+    assert_eq!(
+        ResponseOverride::parse("block"),
+        Some(ThreatResponse::Block)
+    );
 }
 
 #[test]
 fn response_override_case_insensitive_upper() {
-    assert_eq!(ResponseOverride::from_str("ALLOW"), Some(ThreatResponse::Allow));
-    assert_eq!(ResponseOverride::from_str("WARN"), Some(ThreatResponse::Warn));
-    assert_eq!(ResponseOverride::from_str("PROMPT"), Some(ThreatResponse::Prompt));
-    assert_eq!(ResponseOverride::from_str("BLOCK"), Some(ThreatResponse::Block));
+    assert_eq!(
+        ResponseOverride::parse("ALLOW"),
+        Some(ThreatResponse::Allow)
+    );
+    assert_eq!(ResponseOverride::parse("WARN"), Some(ThreatResponse::Warn));
+    assert_eq!(
+        ResponseOverride::parse("PROMPT"),
+        Some(ThreatResponse::Prompt)
+    );
+    assert_eq!(
+        ResponseOverride::parse("BLOCK"),
+        Some(ThreatResponse::Block)
+    );
 }
 
 #[test]
 fn response_override_case_insensitive_mixed() {
-    assert_eq!(ResponseOverride::from_str("AlLoW"), Some(ThreatResponse::Allow));
-    assert_eq!(ResponseOverride::from_str("WaRn"), Some(ThreatResponse::Warn));
+    assert_eq!(
+        ResponseOverride::parse("AlLoW"),
+        Some(ThreatResponse::Allow)
+    );
+    assert_eq!(ResponseOverride::parse("WaRn"), Some(ThreatResponse::Warn));
 }
 
 #[test]
 fn response_override_invalid() {
-    assert_eq!(ResponseOverride::from_str("invalid"), None);
-    assert_eq!(ResponseOverride::from_str(""), None);
-    assert_eq!(ResponseOverride::from_str("  "), None);
-    assert_eq!(ResponseOverride::from_str("blockkk"), None);
+    assert_eq!(ResponseOverride::parse("invalid"), None);
+    assert_eq!(ResponseOverride::parse(""), None);
+    assert_eq!(ResponseOverride::parse("  "), None);
+    assert_eq!(ResponseOverride::parse("blockkk"), None);
 }
 
 // =============================================================================
@@ -187,7 +208,10 @@ fn response_override_invalid() {
 #[test]
 fn response_for_none() {
     let config = Config::default();
-    assert_eq!(config.response_for(ThreatLevel::None), ThreatResponse::Allow);
+    assert_eq!(
+        config.response_for(ThreatLevel::None),
+        ThreatResponse::Allow
+    );
 }
 
 #[test]
@@ -199,13 +223,19 @@ fn response_for_low_default() {
 #[test]
 fn response_for_medium_default() {
     let config = Config::default();
-    assert_eq!(config.response_for(ThreatLevel::Medium), ThreatResponse::Prompt);
+    assert_eq!(
+        config.response_for(ThreatLevel::Medium),
+        ThreatResponse::Prompt
+    );
 }
 
 #[test]
 fn response_for_high_default() {
     let config = Config::default();
-    assert_eq!(config.response_for(ThreatLevel::High), ThreatResponse::Block);
+    assert_eq!(
+        config.response_for(ThreatLevel::High),
+        ThreatResponse::Block
+    );
 }
 
 #[test]
@@ -223,8 +253,14 @@ fn response_for_custom_overrides() {
 
     let config = Config::from_file(&config_path).unwrap();
     assert_eq!(config.response_for(ThreatLevel::Low), ThreatResponse::Allow);
-    assert_eq!(config.response_for(ThreatLevel::Medium), ThreatResponse::Warn);
-    assert_eq!(config.response_for(ThreatLevel::High), ThreatResponse::Prompt);
+    assert_eq!(
+        config.response_for(ThreatLevel::Medium),
+        ThreatResponse::Warn
+    );
+    assert_eq!(
+        config.response_for(ThreatLevel::High),
+        ThreatResponse::Prompt
+    );
 }
 
 // =============================================================================
@@ -369,7 +405,10 @@ fn to_toml_roundtrip() {
     let loaded = Config::from_file(&config_path).unwrap();
 
     assert_eq!(original.detection.enable_yara, loaded.detection.enable_yara);
-    assert_eq!(original.detection.timeout_secs, loaded.detection.timeout_secs);
+    assert_eq!(
+        original.detection.timeout_secs,
+        loaded.detection.timeout_secs
+    );
     assert_eq!(original.response.low, loaded.response.low);
     assert_eq!(original.response.high, loaded.response.high);
 }

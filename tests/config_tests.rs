@@ -1,7 +1,7 @@
 use pipeguard::config::settings::{Config, ResponseOverride};
 use pipeguard::detection::threat::{ThreatLevel, ThreatResponse};
-use tempfile::TempDir;
 use std::fs;
+use tempfile::TempDir;
 
 #[test]
 fn config_loads_from_toml_file() {
@@ -45,11 +45,20 @@ fn config_uses_defaults_when_missing() {
 
 #[test]
 fn config_response_override_from_string() {
-    assert_eq!(ResponseOverride::from_str("warn"), Some(ThreatResponse::Warn));
-    assert_eq!(ResponseOverride::from_str("prompt"), Some(ThreatResponse::Prompt));
-    assert_eq!(ResponseOverride::from_str("block"), Some(ThreatResponse::Block));
-    assert_eq!(ResponseOverride::from_str("allow"), Some(ThreatResponse::Allow));
-    assert_eq!(ResponseOverride::from_str("invalid"), None);
+    assert_eq!(ResponseOverride::parse("warn"), Some(ThreatResponse::Warn));
+    assert_eq!(
+        ResponseOverride::parse("prompt"),
+        Some(ThreatResponse::Prompt)
+    );
+    assert_eq!(
+        ResponseOverride::parse("block"),
+        Some(ThreatResponse::Block)
+    );
+    assert_eq!(
+        ResponseOverride::parse("allow"),
+        Some(ThreatResponse::Allow)
+    );
+    assert_eq!(ResponseOverride::parse("invalid"), None);
 }
 
 #[test]
@@ -68,9 +77,18 @@ fn config_gets_response_for_threat_level() {
     let config = Config::from_file(&config_path).unwrap();
 
     assert_eq!(config.response_for(ThreatLevel::Low), ThreatResponse::Allow);
-    assert_eq!(config.response_for(ThreatLevel::Medium), ThreatResponse::Warn);
-    assert_eq!(config.response_for(ThreatLevel::High), ThreatResponse::Prompt);
-    assert_eq!(config.response_for(ThreatLevel::None), ThreatResponse::Allow);
+    assert_eq!(
+        config.response_for(ThreatLevel::Medium),
+        ThreatResponse::Warn
+    );
+    assert_eq!(
+        config.response_for(ThreatLevel::High),
+        ThreatResponse::Prompt
+    );
+    assert_eq!(
+        config.response_for(ThreatLevel::None),
+        ThreatResponse::Allow
+    );
 }
 
 #[test]

@@ -1,0 +1,19 @@
+# typos configuration for PipeGuard
+# https://github.com/crate-ci/typos
+
+[default.extend-words]
+# "ba" appears in regex patterns like (ba)?sh matching "bash"
+ba = "ba"
+
+[default.extend-identifiers]
+# FPR = False Positive Rate (security metrics term)
+FPR = "FPR"
+
+[files]
+extend-exclude = [
+  # Generated/binary files
+  "target/",
+  "*.lock",
+  # Git worktrees
+  ".worktrees/",
+]

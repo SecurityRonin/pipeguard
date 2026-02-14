@@ -2,8 +2,8 @@
 
 use pipeguard::detection::pipeline::{DetectionPipeline, PipelineConfig};
 use pipeguard::detection::threat::{ThreatLevel, ThreatResponse};
-use tempfile::TempDir;
 use std::fs;
+use tempfile::TempDir;
 
 // =============================================================================
 // Pipeline creation tests
@@ -465,7 +465,9 @@ fn analyze_with_many_rules() {
     }
 
     let pipeline = DetectionPipeline::new(&rules, PipelineConfig::default()).unwrap();
-    let result = pipeline.analyze("unique_pattern_025 unique_pattern_042").unwrap();
+    let result = pipeline
+        .analyze("unique_pattern_025 unique_pattern_042")
+        .unwrap();
 
     assert!(result.is_threat());
     assert_eq!(result.match_count(), 2);

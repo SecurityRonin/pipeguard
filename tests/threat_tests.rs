@@ -31,7 +31,10 @@ fn threat_level_zero_is_none() {
 fn threat_level_default_response() {
     // Low -> Warn, Medium -> Prompt, High -> Block
     assert_eq!(ThreatLevel::Low.default_response(), ThreatResponse::Warn);
-    assert_eq!(ThreatLevel::Medium.default_response(), ThreatResponse::Prompt);
+    assert_eq!(
+        ThreatLevel::Medium.default_response(),
+        ThreatResponse::Prompt
+    );
     assert_eq!(ThreatLevel::High.default_response(), ThreatResponse::Block);
     assert_eq!(ThreatLevel::None.default_response(), ThreatResponse::Allow);
 }

@@ -76,7 +76,10 @@ impl DetectionPipeline {
             })?;
             let path = entry.path();
 
-            if path.extension().is_some_and(|ext| ext == "yar" || ext == "yara") {
+            if path
+                .extension()
+                .is_some_and(|ext| ext == "yar" || ext == "yara")
+            {
                 let content = std::fs::read_to_string(&path).map_err(|source| {
                     PipelineError::RulesDirError {
                         path: path.clone(),
@@ -93,7 +96,13 @@ impl DetectionPipeline {
             return Err(PipelineError::NoRulesFound);
         }
 
-        debug!(total_rules = combined_rules.lines().filter(|l| l.trim_start().starts_with("rule ")).count(), "All rule files loaded");
+        debug!(
+            total_rules = combined_rules
+                .lines()
+                .filter(|l| l.trim_start().starts_with("rule "))
+                .count(),
+            "All rule files loaded"
+        );
         Self::new(&combined_rules, config)
     }
 
@@ -114,7 +123,9 @@ impl DetectionPipeline {
         let storage = VersionedStorage::new(storage_path)?;
 
         // Get the active version
-        let version = storage.current_version()?;
+        let version = storage.current_version()?.ok_or_else(|| {
+            PipelineError::NoActiveVersion(anyhow::anyhow!("No active version set"))
+        })?;
 
         // Get the active version's directory path
         let version_path = storage.version_path(&version)?;
@@ -123,8 +134,7 @@ impl DetectionPipeline {
         let rules = storage.read_rules(&version_path)?;
 
         // Convert bytes to string
-        let rules_str = String::from_utf8(rules)
-            .map_err(|_| PipelineError::NoRulesFound)?;
+        let rules_str = String::from_utf8(rules).map_err(|_| PipelineError::NoRulesFound)?;
 
         Self::new(&rules_str, config)
     }
@@ -179,6 +189,11 @@ impl DetectionResult {
     /// Get the content hash (SHA-256).
     pub fn content_hash(&self) -> &str {
         &self.content_hash
+    }
+
+    /// Get the individual threat matches.
+    pub fn matches(&self) -> &[ThreatMatch] {
+        &self.matches
     }
 
     /// Generate a human-readable report.

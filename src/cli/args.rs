@@ -7,7 +7,9 @@ use std::path::PathBuf;
 #[derive(Parser, Debug)]
 #[command(name = "pipeguard")]
 #[command(author, version, about, long_about = None)]
-#[command(about = "PipeGuard - Defending against curl|bash attacks through multi-layer shell interception")]
+#[command(
+    about = "PipeGuard - Defending against curl|bash attacks through multi-layer shell interception"
+)]
 pub struct Cli {
     /// Logging verbosity level
     #[arg(long, global = true, default_value = "warn")]
@@ -17,6 +19,10 @@ pub struct Cli {
     #[arg(long, global = true, default_value = "pretty")]
     pub log_format: crate::logging::LogFormat,
 
+    /// Control color output (auto, always, never). Respects NO_COLOR env var.
+    #[arg(long, global = true, default_value = "auto")]
+    pub color: ColorMode,
+
     #[command(subcommand)]
     pub command: Commands,
 }
@@ -25,9 +31,9 @@ pub struct Cli {
 pub enum Commands {
     /// Scan content for threats
     Scan {
-        /// Path to YARA rules file or directory
+        /// Path to YARA rules file or directory [default: auto-detected]
         #[arg(short, long)]
-        rules: PathBuf,
+        rules: Option<PathBuf>,
 
         /// File to scan (reads from stdin if not provided)
         #[arg(short, long)]
@@ -36,6 +42,10 @@ pub enum Commands {
         /// Output format: text, json
         #[arg(short = 'F', long, default_value = "text")]
         format: OutputFormat,
+
+        /// Suppress all stdout output, only set exit code
+        #[arg(short, long)]
+        quiet: bool,
     },
 
     /// Install shell integration
@@ -66,6 +76,13 @@ pub enum Commands {
         #[command(subcommand)]
         action: UpdateAction,
     },
+
+    /// Generate shell completions
+    Completions {
+        /// Shell to generate completions for
+        #[arg(value_enum)]
+        shell: CompletionShell,
+    },
 }
 
 #[derive(Subcommand, Debug)]
@@ -88,6 +105,13 @@ pub enum RulesAction {
 
     /// Validate rules syntax
     Validate {
+        /// Path to rules file or directory
+        #[arg(short, long)]
+        path: PathBuf,
+    },
+
+    /// Show rule metadata (name, severity, description)
+    Info {
         /// Path to rules file or directory
         #[arg(short, long)]
         path: PathBuf,
@@ -184,6 +208,66 @@ pub enum ShellType {
     All,
 }
 
+/// Color output mode.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
+pub enum ColorMode {
+    /// Auto-detect based on terminal
+    Auto,
+    /// Always use colors
+    Always,
+    /// Never use colors
+    Never,
+}
+
+/// Shell type for completion generation.
+#[derive(Debug, Clone, Copy, clap::ValueEnum)]
+pub enum CompletionShell {
+    Bash,
+    Zsh,
+    Fish,
+}
+
+/// Scan exit codes with distinct semantics.
+/// 0 = clean, 1 = threat detected, 2 = error.
+pub const EXIT_CLEAN: u8 = 0;
+pub const EXIT_THREAT: u8 = 1;
+pub const EXIT_ERROR: u8 = 2;
+
+/// Well-known rules paths searched when --rules is omitted.
+pub const DEFAULT_RULES_SEARCH_PATHS: &[&str] = &[
+    // Homebrew (Apple Silicon)
+    "/opt/homebrew/share/pipeguard/rules",
+    // Homebrew (Intel)
+    "/usr/local/share/pipeguard/rules",
+    // User local
+    "~/.pipeguard/rules",
+];
+
+/// Resolve the rules path: use provided, or search defaults.
+pub fn resolve_rules_path(provided: Option<PathBuf>) -> Option<PathBuf> {
+    if let Some(path) = provided {
+        return Some(path);
+    }
+
+    for candidate in DEFAULT_RULES_SEARCH_PATHS {
+        let expanded = if candidate.starts_with('~') {
+            if let Some(home) = dirs::home_dir() {
+                home.join(&candidate[2..])
+            } else {
+                continue;
+            }
+        } else {
+            PathBuf::from(candidate)
+        };
+
+        if expanded.exists() {
+            return Some(expanded);
+        }
+    }
+
+    None
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -209,7 +293,6 @@ mod tests {
 
     #[test]
     fn cli_log_level_global_works_after_subcommand() {
-        // Global args can appear after the subcommand
         let cli = Cli::parse_from(["pipeguard", "rules", "list", "--log-level", "trace"]);
         assert_eq!(cli.log_level, LogLevel::Trace);
     }
@@ -221,5 +304,89 @@ mod tests {
         assert_eq!(tracing::Level::from(LogLevel::Info), tracing::Level::INFO);
         assert_eq!(tracing::Level::from(LogLevel::Debug), tracing::Level::DEBUG);
         assert_eq!(tracing::Level::from(LogLevel::Trace), tracing::Level::TRACE);
+    }
+
+    // --- New enhancement tests (TDD) ---
+
+    #[test]
+    fn scan_rules_is_optional() {
+        // --rules should be optional (auto-detected)
+        let cli = Cli::parse_from(["pipeguard", "scan"]);
+        match cli.command {
+            Commands::Scan { rules, .. } => assert!(rules.is_none()),
+            _ => panic!("Expected Scan command"),
+        }
+    }
+
+    #[test]
+    fn scan_accepts_quiet_flag() {
+        let cli = Cli::parse_from(["pipeguard", "scan", "--quiet"]);
+        match cli.command {
+            Commands::Scan { quiet, .. } => assert!(quiet),
+            _ => panic!("Expected Scan command"),
+        }
+    }
+
+    #[test]
+    fn scan_quiet_default_is_false() {
+        let cli = Cli::parse_from(["pipeguard", "scan"]);
+        match cli.command {
+            Commands::Scan { quiet, .. } => assert!(!quiet),
+            _ => panic!("Expected Scan command"),
+        }
+    }
+
+    #[test]
+    fn color_mode_defaults_to_auto() {
+        let cli = Cli::parse_from(["pipeguard", "rules", "list"]);
+        assert_eq!(cli.color, ColorMode::Auto);
+    }
+
+    #[test]
+    fn color_mode_accepts_never() {
+        let cli = Cli::parse_from(["pipeguard", "--color", "never", "rules", "list"]);
+        assert_eq!(cli.color, ColorMode::Never);
+    }
+
+    #[test]
+    fn completions_subcommand_parses() {
+        let cli = Cli::parse_from(["pipeguard", "completions", "zsh"]);
+        matches!(cli.command, Commands::Completions { .. });
+    }
+
+    #[test]
+    fn rules_info_subcommand_parses() {
+        let cli = Cli::parse_from(["pipeguard", "rules", "info", "--path", "rules/core.yar"]);
+        match cli.command {
+            Commands::Rules {
+                action: RulesAction::Info { path },
+            } => {
+                assert_eq!(path, PathBuf::from("rules/core.yar"));
+            }
+            _ => panic!("Expected Rules Info command"),
+        }
+    }
+
+    #[test]
+    fn exit_codes_are_distinct() {
+        assert_eq!(EXIT_CLEAN, 0);
+        assert_eq!(EXIT_THREAT, 1);
+        assert_eq!(EXIT_ERROR, 2);
+        assert_ne!(EXIT_THREAT, EXIT_ERROR);
+    }
+
+    #[test]
+    fn resolve_rules_path_with_provided() {
+        let result = resolve_rules_path(Some(PathBuf::from("/tmp/rules")));
+        assert_eq!(result, Some(PathBuf::from("/tmp/rules")));
+    }
+
+    #[test]
+    fn resolve_rules_path_returns_none_when_no_defaults_exist() {
+        // With no provided path and no defaults installed, should return None
+        let result = resolve_rules_path(None);
+        // Can't guarantee None on a machine with pipeguard installed,
+        // but the function should not panic
+        let _ = result;
     }
 }

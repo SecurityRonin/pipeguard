@@ -1,7 +1,7 @@
-use pipeguard::detection::pipeline::{DetectionPipeline, DetectionResult, PipelineConfig};
+use pipeguard::detection::pipeline::{DetectionPipeline, PipelineConfig};
 use pipeguard::detection::threat::{ThreatLevel, ThreatResponse};
-use tempfile::TempDir;
 use std::fs;
+use tempfile::TempDir;
 
 fn create_test_rules() -> String {
     r#"
@@ -37,7 +37,8 @@ fn create_test_rules() -> String {
             condition:
                 $keychain or ($dump and $keychain)
         }
-    "#.to_string()
+    "#
+    .to_string()
 }
 
 #[test]

@@ -40,8 +40,8 @@ fn test_tampered_rules_fail() {
 // Test helpers
 fn generate_test_keypair() -> ([u8; 32], [u8; 32]) {
     use ed25519_dalek::{SigningKey, VerifyingKey, SECRET_KEY_LENGTH};
-    use rand::RngCore;
     use rand::rngs::OsRng;
+    use rand::RngCore;
 
     let mut secret_bytes = [0u8; SECRET_KEY_LENGTH];
     OsRng.fill_bytes(&mut secret_bytes);
@@ -53,7 +53,7 @@ fn generate_test_keypair() -> ([u8; 32], [u8; 32]) {
 }
 
 fn sign_test_data(data: &[u8], private_key: &[u8; 32]) -> Vec<u8> {
-    use ed25519_dalek::{SigningKey, Signer};
+    use ed25519_dalek::{Signer, SigningKey};
 
     let signing_key = SigningKey::from_bytes(private_key);
     let signature = signing_key.sign(data);
